@@ -9,10 +9,19 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Register any application services.
      */
-    public function register(): void
-    {
-        //
-    }
+// app/Providers/AppServiceProvider.php
+
+public function register()
+{
+    $this->app->singleton(\App\Services\SupabaseService::class, function ($app) {
+        return new \App\Services\SupabaseService(
+            config('services.supabase.url'),
+            config('services.supabase.key'),
+            $app->make(\Psr\Log\LoggerInterface::class)
+        );
+    });
+}
+
 
     /**
      * Bootstrap any application services.

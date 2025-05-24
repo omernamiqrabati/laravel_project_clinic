@@ -18,3 +18,20 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
 $app->handleRequest(Request::capture());
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $workingHours = $_POST['working_hours'] ?? [];
+
+    echo "<h1>Submitted Working Hours</h1>";
+    echo "<table border='1'>";
+    echo "<tr><th>Day</th><th>Start Time</th><th>End Time</th></tr>";
+
+    foreach ($workingHours as $day => $hours) {
+        $start = htmlspecialchars($hours['start'] ?? '');
+        $end = htmlspecialchars($hours['end'] ?? '');
+        echo "<tr><td>{$day}</td><td>{$start}</td><td>{$end}</td></tr>";
+    }
+
+    echo "</table>";
+    exit;
+}
