@@ -3,91 +3,98 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\SupabaseService;
+use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
-    // Static list of invoices
-    private $invoices = [
-        [
-            'id' => 1,
-            'patient_id' => 1,
-            'appointment_id' => 1,
-            'total_amount' => 150.00,
-            'payment_status' => 'Paid',
-            'issue_date' => '2025-04-01',
-            'due_date' => '2025-04-15',
-        ],
-        [
-            'id' => 2,
-            'patient_id' => 2,
-            'appointment_id' => 2,
-            'total_amount' => 200.00,
-            'payment_status' => 'Unpaid',
-            'issue_date' => '2025-04-02',
-            'due_date' => '2025-04-16',
-        ],
-    ];
+    protected $supabase;
 
-    // Display a listing of invoices
-    public function index()
+    public function __construct(SupabaseService $supabase)
     {
-        return view('admin.invoices.index', ['invoices' => $this->invoices]);
+        $this->supabase = $supabase;
     }
 
-    // Show the form for creating a new invoice
+    public function index()
+    {
+        try {
+            $invoices = $this->supabase->fetchTable('invoices');
+            
+            // Fetch patient names for display
+            $patients_name = $this->supabase->fetchByQuery('user_profiles', [
+                'role' => 'patient'
+            ], ['first_name', 'last_name','id']);
+            
+            return view('admin.invoices.index', [
+                'invoices' => $invoices,
+                'patients_name' => $patients_name
+            ]);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error fetching invoices: ' . $e->getMessage());
+        }
+    }
+
     public function create()
     {
         return view('admin.invoices.create');
     }
 
-    // Store a newly created invoice
-    public function store()
+    public function store(Request $request)
     {
-        $newInvoice = [
-            'id' => count($this->invoices) + 1,
-            'patient_id' => request('patient_id'),
-            'appointment_id' => request('appointment_id'),
-            'total_amount' => request('total_amount'),
-            'payment_status' => request('payment_status'),
-            'issue_date' => request('issue_date'),
-            'due_date' => request('due_date'),
-        ];
+        try {
+            $validatedData = $request->validate([
+                'patient_id' => 'required|integer',
+                'appointment_id' => 'required|integer',
+                'total_amount' => 'required|numeric|min:0',
+                'tax' => 'required|numeric|min:0',
+                'payment_status' => 'required|string|in:Pending,Paid,Overdue,Cancelled'
+            ]);
 
-        $this->invoices[] = $newInvoice;
+            $this->supabase->insert_table('invoices', $validatedData);
 
-        return redirect()->route('admin.invoices.index');
+            return redirect()->route('admin.invoices.index')->with('success', 'Invoice created successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error creating invoice: ' . $e->getMessage());
+        }
     }
 
-    // Show the form for editing the specified invoice
     public function edit($id)
     {
-        $invoice = collect($this->invoices)->firstWhere('id', $id);
-        return view('admin.invoices.edit', compact('invoice'));
+        try {
+            $invoice = $this->supabase->fetchById('invoices', $id);
+            return view('admin.invoices.edit', compact('invoice'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error fetching invoice: ' . $e->getMessage());
+        }
     }
 
-    // Update the specified invoice
-    public function update($id)
+    public function update(Request $request, $id)
     {
-        $index = array_search($id, array_column($this->invoices, 'id'));
-        if ($index === false) return redirect()->route('admin.invoices.index');
+        try {
+            $validatedData = $request->validate([
+                'patient_id' => 'required|integer',
+                'appointment_id' => 'required|integer',
+                'total_amount' => 'required|numeric|min:0',
+                'tax' => 'required|numeric|min:0',
+                'payment_status' => 'required|string|in:Pending,Paid,Overdue,Cancelled'
+            ]);
 
-        $this->invoices[$index] = [
-            'id' => $id,
-            'patient_id' => request('patient_id'),
-            'appointment_id' => request('appointment_id'),
-            'total_amount' => request('total_amount'),
-            'payment_status' => request('payment_status'),
-            'issue_date' => request('issue_date'),
-            'due_date' => request('due_date'),
-        ];
+            $this->supabase->updateById('invoices', $id, $validatedData);
 
-        return redirect()->route('admin.invoices.index');
+            return redirect()->route('admin.invoices.index')->with('success', 'Invoice updated successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error updating invoice: ' . $e->getMessage());
+        }
     }
 
-    // Remove the specified invoice
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $this->invoices = array_filter($this->invoices, fn($invoice) => $invoice['id'] != $id);
-        return redirect()->route('admin.invoices.index');
+        try {
+            $this->supabase->deleteById('invoices', $id);
+
+            return redirect()->route('admin.invoices.index')->with('success', 'Invoice deleted successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error deleting invoice: ' . $e->getMessage());
+        }
     }
 }

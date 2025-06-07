@@ -2,8 +2,8 @@
 
 @section('content')
     <div class="container mx-auto px-4 py-6">
-        <h1 class="text-3xl font-bold mb-4">Add New Medical History</h1>
-        <form action="{{ route('admin.medical_histories.store') }}" method="POST" class="space-y-4">
+        <h1 class="text-3xl font-bold mb-4">Add New User Profile</h1>
+        <form action="{{ route('admin.user_profiles.store') }}" method="POST" class="space-y-4">
             @csrf
             <div>
                 <label for="invoice_id" class="block text-sm font-semibold">Invoice ID</label>
@@ -25,7 +25,7 @@
                 <label for="date" class="block text-sm font-semibold">Date</label>
                 <input type="date" name="date" id="date" class="w-full border border-gray-300 px-4 py-2 rounded" required>
             </div>
-            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save Medical History</button>
+            <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save User Profile</button>
         </form>
     </div>
 @endsection

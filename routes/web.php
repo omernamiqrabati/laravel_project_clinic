@@ -1,16 +1,27 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\PatientController;
 use App\Http\Controllers\Admin\DentistController;
 use App\Http\Controllers\Admin\AppointmentController;
 use App\Http\Controllers\Admin\TreatmentController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\PaymentController;
-use App\Http\Controllers\Admin\MedicalHistoryController;
+use App\Http\Controllers\Admin\UserProfileController;
+
+// Root route - redirect to admin dashboard
+Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+// Admin dashboard route
+Route::prefix('admin')->name('admin.')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+
 
 Route::prefix('admin')->name('admin.')->group(function () {
-    Route::resource('medical_histories', MedicalHistoryController::class);
+    Route::resource('user_profiles', UserProfileController::class);
 });
 
 Route::prefix('admin')->name('admin.')->group(function () {

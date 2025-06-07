@@ -3,35 +3,26 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\SupabaseService;
+use Illuminate\Http\Request;
 
 class TreatmentController extends Controller
 {
-    // Static list of treatments
-    private $treatments = [
-        [
-            'id' => 1,
-            'name' => 'Teeth Cleaning',
-            'description' => 'A professional cleaning to remove plaque and tartar.',
-            'cost' => 50.00,
-        ],
-        [
-            'id' => 2,
-            'name' => 'Cavity Filling',
-            'description' => 'Filling cavities caused by tooth decay.',
-            'cost' => 120.00,
-        ],
-        [
-            'id' => 3,
-            'name' => 'Root Canal',
-            'description' => 'Treatment for infection at the center of a tooth.',
-            'cost' => 300.00,
-        ],
-        // Add more treatments as needed
-    ];
+    protected $supabase;
+
+    public function __construct(SupabaseService $supabase)
+    {
+        $this->supabase = $supabase;
+    }
 
     public function index()
     {
-        return view('admin.treatments.index', ['treatments' => $this->treatments]);
+        try {
+            $treatments = $this->supabase->fetchTable('treatments');
+            return view('admin.treatments.index', ['treatments' => $treatments]);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error fetching treatments: ' . $e->getMessage());
+        }
     }
 
     public function create()
@@ -39,41 +30,68 @@ class TreatmentController extends Controller
         return view('admin.treatments.create');
     }
 
-    public function store()
+    public function store(Request $request)
     {
-        $newTreatment = [
-            'id' => count($this->treatments) + 1,
-            'name' => request('name'),
-            'description' => request('description'),
-            'cost' => request('cost'),
-        ];
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'cost' => 'required|numeric|min:0',
+                'duration_minutes' => 'required|integer|min:1',
+                'is_active' => 'boolean'
+            ]);
 
-        $this->treatments[] = $newTreatment;
+            // Default is_active to true if not provided
+            $validatedData['is_active'] = $validatedData['is_active'] ?? true;
 
-        return redirect()->route('admin.treatments.index');
+            $this->supabase->insert_table('treatments', $validatedData);
+
+            return redirect()->route('admin.treatments.index')->with('success', 'Treatment created successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error creating treatment: ' . $e->getMessage());
+        }
     }
 
     public function edit($id)
     {
-        $treatment = collect($this->treatments)->firstWhere('id', $id);
-        return view('admin.treatments.edit', compact('treatment'));
+        try {
+            $treatment = $this->supabase->fetchById('treatments', $id);
+            return view('admin.treatments.edit', compact('treatment'));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error fetching treatment: ' . $e->getMessage());
+        }
     }
 
-    public function update($id)
+    public function update(Request $request, $id)
     {
-        $index = array_search($id, array_column($this->treatments, 'id'));
-        if ($index === false) return redirect()->route('admin.treatments.index');
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'required|string',
+                'cost' => 'required|numeric|min:0',
+                'duration_minutes' => 'required|integer|min:1',
+                'is_active' => 'boolean'
+            ]);
 
-        $this->treatments[$index]['name'] = request('name');
-        $this->treatments[$index]['description'] = request('description');
-        $this->treatments[$index]['cost'] = request('cost');
+            // Default is_active to true if not provided
+            $validatedData['is_active'] = $validatedData['is_active'] ?? true;
 
-        return redirect()->route('admin.treatments.index');
+            $this->supabase->updateById('treatments', $id, $validatedData);
+
+            return redirect()->route('admin.treatments.index')->with('success', 'Treatment updated successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error updating treatment: ' . $e->getMessage());
+        }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $this->treatments = array_filter($this->treatments, fn($treatment) => $treatment['id'] != $id);
-        return redirect()->route('admin.treatments.index');
+        try {
+            $this->supabase->deleteById('treatments', $id);
+
+            return redirect()->route('admin.treatments.index')->with('success', 'Treatment deleted successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error deleting treatment: ' . $e->getMessage());
+        }
     }
 }

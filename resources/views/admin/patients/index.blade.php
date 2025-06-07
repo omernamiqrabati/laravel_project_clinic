@@ -1,54 +1,76 @@
 @extends('layouts.admin')
 
 @section('content')
-    <h2 class="text-xl font-bold mb-4 text-blue-700">Patient List</h2>
+    <div class="mb-10">
+        <h2 class="text-3xl font-bold text-blue-800 mb-6">🦷 Dental Clinic – Patient Management</h2>
 
-    <div class="flex justify-between mb-4">
-        <a href="{{ route('admin.patients.create') }}" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Add New Patient</a>
-    </div>
+        {{-- Flash Messages --}}
+        @if(session('success'))
+            <div class="mb-4 px-5 py-3 rounded-md bg-green-100 border border-green-400 text-green-800">
+                {{ session('success') }}
+            </div>
+        @endif
 
-    @if(session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <span class="block sm:inline">{{ session('success') }}</span>
+        @if(session('error'))
+            <div class="mb-4 px-5 py-3 rounded-md bg-red-100 border border-red-400 text-red-800">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        {{-- Add Patient Button --}}
+        <div class="flex justify-end mb-6">
+            <a href="{{ route('admin.patients.create') }}"
+               class="inline-block px-5 py-2.5 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition">
+                + Add New Patient
+            </a>
         </div>
-    @endif
 
-    @if(session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <span class="block sm:inline">{{ session('error') }}</span>
-        </div>
-    @endif
-
-    <div class="overflow-x-auto">
-        <table class="min-w-full bg-white border border-gray-200 rounded-lg">
-            <thead>
-                <tr class="bg-blue-100 text-left text-sm font-semibold text-blue-700">
-                    <th class="py-2 px-4 border-b">Patient ID</th>
-                    <th class="py-2 px-4 border-b">Date of Birth</th>
-                    <th class="py-2 px-4 border-b">Gender</th>
-                    <th class="py-2 px-4 border-b">Address</th>
-                    <th class="py-2 px-4 border-b">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="text-sm">
-                @foreach ($patients as $patient)
-                    <tr class="hover:bg-gray-50">
-                        <td class="py-2 px-4 border-b">{{ $patient['patient_id'] }}</td>
-                        <td class="py-2 px-4 border-b">{{ $patient['date_of_birth'] }}</td>
-                        <td class="py-2 px-4 border-b">{{ $patient['gender'] }}</td>
-                        <td class="py-2 px-4 border-b">{{ $patient['address'] }}</td>
-                        <td class="py-2 px-4 border-b">
-                            <a href="{{ route('admin.patients.edit', $patient['patient_id']) }}" class="text-yellow-600 hover:text-yellow-800">Edit</a>
-                            |
-                            <form action="{{ route('admin.patients.destroy', $patient['patient_id']) }}" method="POST" class="inline">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800">Delete</button>
-                            </form>
-                        </td>
+        {{-- Patient Table --}}
+        <div class="overflow-x-auto bg-white border border-gray-200 rounded-xl shadow-md">
+            <table class="min-w-full text-sm text-left whitespace-nowrap">
+                <thead class="bg-blue-100 text-blue-800 text-sm font-semibold">
+                    <tr>
+                        <th class="px-5 py-3 border-b">ID</th>
+                        <th class="px-5 py-3 border-b">Date of Birth</th>
+                        <th class="px-5 py-3 border-b">Gender</th>
+                        <th class="px-5 py-3 border-b">Address</th>
+                        <th class="px-5 py-3 border-b text-center">Actions</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($patients as $patient)
+                        <tr class="hover:bg-gray-50 border-t">
+                            <td class="px-5 py-3">{{ $patient['patient_id'] }}</td>
+                            <td class="px-5 py-3">{{ $patient['date_of_birth'] }}</td>
+                            <td class="px-5 py-3">{{ $patient['gender'] }}</td>
+                            <td class="px-5 py-3 text-gray-700">{{ $patient['address'] }}</td>
+
+                            <td class="px-5 py-3 text-center">
+                                <div class="flex justify-center space-x-3">
+                                    <a href="{{ route('admin.patients.edit', $patient['patient_id']) }}"
+                                       class="text-yellow-600 hover:text-yellow-800 transition font-medium">Edit</a>
+
+                                    <form action="{{ route('admin.patients.destroy', $patient['patient_id']) }}"
+                                          method="POST" onsubmit="return confirm('Are you sure you want to delete this patient?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit"
+                                                class="text-red-600 hover:text-red-800 transition font-medium">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-5 py-5 text-center text-gray-500">
+                                No patients found.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 @endsection

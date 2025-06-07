@@ -2,30 +2,75 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Panel</title>
-    <!-- Tailwind CSS via CDN -->
+    <title>Dental Clinic Admin Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-gray-100 text-gray-800 min-h-screen flex">
 
-    <nav class="bg-white shadow p-4 mb-6">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-blue-600">Dental Admin Panel</h1>
-            <div class="space-x-4">
-                <a href="{{ route('admin.patients.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Patients</a>
-                <a href="{{ route('admin.dentists.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Dentists</a>
-                <a href="{{ route('admin.appointments.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Appointments</a>
-                <a href="{{ route('admin.treatments.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Treatments</a>
-                <a href="{{ route('admin.invoices.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Invoices</a>
-                <a href="{{ route('admin.payments.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Payments</a>
-                <a href="{{ route('admin.medical_histories.index') }}" class="text-sm font-semibold text-gray-700 hover:text-blue-600">Medical Histories</a>
-            </div>
+    <!-- Sidebar -->
+    <aside class="bg-white w-64 min-h-screen shadow-lg p-6 flex flex-col justify-between">
+        <div>            <h1 class="text-3xl font-extrabold text-blue-600 mb-10">🦷 Dental Admin</h1>
+            <nav>
+                <ul class="space-y-4 text-sm font-medium">
+                    <li>
+                        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="layout-dashboard" class="w-5 h-5"></i> Dashboard
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.patients.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="users" class="w-5 h-5"></i> Patients
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.dentists.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="user-check" class="w-5 h-5"></i> Dentists
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.appointments.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="calendar-clock" class="w-5 h-5"></i> Appointments
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.treatments.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="activity" class="w-5 h-5"></i> Treatments
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.invoices.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="file-text" class="w-5 h-5"></i> Invoices
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.payments.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="credit-card" class="w-5 h-5"></i> Payments
+                        </a>
+                    </li>
+                    <li>
+                        <a href="{{ route('admin.user_profiles.index') }}" class="flex items-center gap-3 hover:text-blue-600 transition-colors">
+                            <i data-lucide="clipboard-list" class="w-5 h-5"></i> User Profiles
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
-    </nav>
+        <div class="text-xs text-gray-400 mt-6">
+            &copy; {{ date('Y') }} Dental Clinic. All rights reserved.
+        </div>
+    </aside>
 
-    <main class="max-w-full mx-auto p-6 bg-white rounded-lg shadow">
+    <!-- Main Content -->
+    <main class="flex-1 p-8 bg-white m-6 rounded-xl shadow-md overflow-y-auto">
         @yield('content')
     </main>
 
+    <script>
+        lucide.createIcons();
+    </script>
 </body>
 </html>
