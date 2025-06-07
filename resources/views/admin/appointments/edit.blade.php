@@ -48,11 +48,7 @@
                 <label for="treatment_id" class="block text-sm font-medium text-gray-700">Treatment</label>
                 <select name="treatment_id" id="treatment_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                     <option value="">Select a treatment</option>
-                    @foreach($treatments as $treatment)
-                        <option value="{{ $treatment['treatment_id'] }}" {{ $treatment['treatment_id'] == $appointment['treatment_id'] ? 'selected' : '' }}>
-                            {{ $treatment['name'] }}
-                        </option>
-                    @endforeach
+
                 </select>
             </div>
 

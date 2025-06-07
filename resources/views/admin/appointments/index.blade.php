@@ -42,7 +42,7 @@
                     @foreach($patients_name as $patient)
                         @if($patient['id'] == $appointment['patient_id'])
                             <option value="{{ $patient['id'] }}" selected>
-                                {{ $patient['first_name'].' '.$patient['last_name'] }}
+                                {{ $patient['first_name'] . ' ' . $patient['last_name'] }}
                             </option>
                         @endif
                     @endforeach
@@ -51,13 +51,19 @@
                                                 @foreach($dentists_name as $dentist)
                         @if($dentist['id'] == $appointment['dentist_id'])
                             <option value="{{ $dentist['id'] }}" selected>
-                                {{ $dentist['first_name'].' '.$dentist['last_name'] }}
+                                {{ $dentist['first_name'] . ' ' . $dentist['last_name'] }}
                             </option>
                         @endif
                     @endforeach
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $appointment['treatment_name'] ?? $appointment['treatment_id'] }}
+                                   @foreach($treatments_name as $treatment)
+                                        @if($treatment['treatment_id'] == $appointment['treatment_id'])
+                                            <option value="{{ $treatment['treatment_id'] }}" selected>
+                                                {{ $treatment['name'] }}
+                                            </option>
+                                        @endif
+                                    @endforeach
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ date('Y-m-d H:i', strtotime($appointment['start_time'])) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ date('Y-m-d H:i', strtotime($appointment['end_time'])) }}</td>

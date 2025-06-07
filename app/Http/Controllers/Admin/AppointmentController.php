@@ -37,19 +37,9 @@ class AppointmentController extends Controller
             $dentists_name = $this->supabase->fetchByQuery('user_profiles', [
                 'role' => 'dentist'
             ], ['first_name', 'last_name','id']);
+            $treatments_name = $this->supabase->fetchByQuery('treatments', [
+            ], ['name','treatment_id']);
 
-            // // Enrich appointments with names
-            // $appointments = array_map(function($app) use ($patientNames, $dentistNames, $treatmentNames, $dentists_name) {
-            //     $dentistFirstName = 'Unknown';
-            //     foreach ($dentists_name as $dentist) {
-            //         if (isset($dentist['id']) && $dentist['id'] == $app['dentist_id']) {
-            //             $dentistFirstName = $dentist['first_name'] ?? 'Unknown';
-            //             break;
-            //         }
-            //     }
-
-
-            // }, $appointments);
 
             return view('admin.appointments.index', [
                 'dentists_name'=>$dentists_name,
@@ -57,7 +47,8 @@ class AppointmentController extends Controller
                 'appointments' => $appointments,
                 'patients' => $patients,
                 'dentists' => $dentists,
-                'treatments' => $treatments
+                'treatments' => $treatments,
+                'treatments_name' => $treatments_name
             ]);
 
         } catch (\Exception $e) {
