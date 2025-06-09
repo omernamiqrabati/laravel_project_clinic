@@ -5,6 +5,12 @@
     <div class="bg-white shadow-md rounded-2xl p-8">
         <h2 class="text-2xl font-semibold text-blue-800 mb-6 border-b pb-2">🦷 Add New Patient</h2>
 
+        @if(session('error'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+                {{ session('error') }}
+            </div>
+        @endif
+
         @if($errors->any())
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
                 <ul class="list-disc list-inside space-y-1">
@@ -17,12 +23,6 @@
 
         <form action="{{ route('admin.patients.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
             @csrf
-
-            <?php $newUuid = (string) Str::uuid(); ?>
-            <input type="hidden" name="patient_id" value="{{ old('patient_id', $newUuid) }}">
-            <input type="hidden" name="created_at" value="{{ old('created_at', now()) }}">
-            <input type="hidden" name="updated_at" value="{{ old('updated_at', now()) }}">
-            <input type="hidden" name="id" value="{{ old('id') }}">
 
             {{-- Personal Info --}}
             <div>
