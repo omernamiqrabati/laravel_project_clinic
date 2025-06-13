@@ -13,12 +13,16 @@ class SupabaseService
     protected $baseUrl;
     protected $apiKey;
     protected $serviceKey;
+    protected $url;
+    protected $anonKey;
 
     public function __construct()
     {
         $this->baseUrl = env('SUPABASE_URL');
         $this->apiKey = env('SUPABASE_KEY');
         $this->serviceKey = env('SUPABASE_SERVICE_KEY');
+        $this->url = config('supabase.url');
+        $this->anonKey = config('supabase.anon_key');
 
         if (!$this->baseUrl || !$this->apiKey) {
             throw new \Exception('Supabase configuration is missing. Please check your .env file.');
@@ -143,7 +147,7 @@ class SupabaseService
         }
     }
 
-public function fetchTable(string $tableName, array $queryParams = [])
+    public function fetchTable(string $tableName, array $queryParams = [])
     {
         try {
             $url = "{$this->baseUrl}/rest/v1/{$tableName}";
@@ -188,74 +192,6 @@ public function fetchTable(string $tableName, array $queryParams = [])
         }
     }
 
-    public function insert_table(string $tableName, array $data)
-    {
-        try {
-            // Process any special fields that need conversion
-            $processedData = $data;
-            
-            // Convert any arrays/objects to JSON strings for proper API handling
-            foreach ($processedData as $key => $value) {
-                if (is_array($value) || is_object($value)) {
-                    $processedData[$key] = json_encode($value);
-                }
-            }
-            
-            $url = "{$this->baseUrl}/rest/v1/{$tableName}";
-            $headers = [
-                'apikey' => $this->apiKey,
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-                'Prefer' => 'return=representation'
-            ];
-
-            // Special handling for user_profiles table - need to use upsert in case of conflict
-            if ($tableName === 'user_profiles' && isset($data['id'])) {
-                $headers['Prefer'] = 'resolution=merge-duplicates,return=representation';
-            }
-
-            Log::info("Making Supabase API request to insert data into table", [
-                'table' => $tableName,
-                'url' => $url,
-                'headers' => $headers,
-                'data' => $processedData
-            ]);
-
-            $response = Http::withHeaders($headers)->post($url, $processedData);
-
-            Log::info("Supabase API response for insert table", [
-                'table' => $tableName,
-                'status' => $response->status(),
-                'body' => $response->body()
-            ]);
-
-            if ($response->failed()) {
-                Log::error("Supabase API error while inserting into table", [
-                    'table' => $tableName,
-                    'status' => $response->status(),
-                    'body' => $response->body()
-                ]);
-                throw new \Exception("Failed to insert data into table '{$tableName}' in Supabase: " . $response->body());
-            }
-
-            $responseData = $response->json();
-            Log::info("Supabase Insert Table Response", [
-                'table' => $tableName,
-                'status' => $response->status(),
-                'data' => $responseData
-            ]);
-
-            return $responseData;
-        } catch (\Exception $e) {
-            Log::error("Error inserting data into table in Supabase", [
-                'table' => $tableName,
-                'error' => $e->getMessage(),
-                'data' => $data
-            ]);
-            throw $e;
-        }
-    }
-
     public function fetchById(string $tableName, $id)
     {
         try {
@@ -271,6 +207,9 @@ public function fetchTable(string $tableName, array $queryParams = [])
                 'dentists' => 'dentist_id',
                 'appointments' => 'appointment_id',
                 'receptionists' => 'receptionist_id',
+                'treatments' => 'treatment_id',
+                'invoices' => 'invoice_id',
+                'payments' => 'payment_id',
                 default => 'id',
             };
 
@@ -331,6 +270,9 @@ public function fetchTable(string $tableName, array $queryParams = [])
                 'dentists' => 'dentist_id',
                 'appointments' => 'appointment_id',
                 'receptionists' => 'receptionist_id',
+                'treatments' => 'treatment_id',
+                'invoices' => 'invoice_id',
+                'payments' => 'payment_id',
                 default => 'id',
             };
             
@@ -381,6 +323,15 @@ public function fetchTable(string $tableName, array $queryParams = [])
         }
     }
 
+    /**
+     * Update a record in a Supabase table by ID.
+     *
+     * @param string $tableName
+     * @param mixed $id
+     * @param array $data
+     * @return array|null
+     * @throws \Exception
+     */
     public function updateById(string $tableName, $id, array $data)
     {
         try {
@@ -390,49 +341,124 @@ public function fetchTable(string $tableName, array $queryParams = [])
                 'dentists' => 'dentist_id',
                 'appointments' => 'appointment_id',
                 'receptionists' => 'receptionist_id',
+                'treatments' => 'treatment_id',
+                'invoices' => 'invoice_id',
+                'payments' => 'payment_id',
                 default => 'id',
             };
-            
+
             $url = "{$this->baseUrl}/rest/v1/{$tableName}?{$primaryKey}=eq.{$id}";
             $headers = [
                 'apikey' => $this->apiKey,
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Content-Type' => 'application/json',
+                'Prefer' => 'return=representation'
             ];
 
-            Log::info("Supabase updateById request", [
+            // Add updated_at timestamp if the table supports it
+            if (in_array($tableName, ['appointments', 'patients', 'dentists', 'treatments', 'user_profiles'])) {
+                $data['updated_at'] = now()->toISOString();
+            }
+
+            Log::info("Making Supabase API request to update record by ID", [
                 'table' => $tableName,
                 'url' => $url,
                 'headers' => array_keys($headers),
-                'data' => $data,
+                'id' => $id,
+                'data' => $data
             ]);
 
             $response = Http::withHeaders($headers)->patch($url, $data);
 
-            Log::info("Supabase updateById response", [
+            Log::info("Supabase API response for update by ID", [
                 'table' => $tableName,
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'headers' => $response->headers(),
+                'body' => $response->body()
             ]);
 
             if ($response->failed()) {
-                Log::error("Supabase updateById error", [
+                Log::error("Supabase API error while updating record by ID", [
                     'table' => $tableName,
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => $response->body()
                 ]);
-                throw new \Exception("Failed to update record in table '{$tableName}'");
+                throw new \Exception("Failed to update record by ID in table '{$tableName}' in Supabase: " . $response->body());
             }
 
-            return $response->json();
+            $responseData = $response->json();
+            Log::info("Supabase Update By ID Response", [
+                'table' => $tableName,
+                'status' => $response->status(),
+                'id' => $id,
+                'data' => $responseData
+            ]);
+
+            return is_array($responseData) && isset($responseData[0]) ? $responseData[0] : $responseData;
         } catch (\Exception $e) {
-            Log::error("Error in updateById", [
+            Log::error("Error updating record by ID in Supabase", [
                 'table' => $tableName,
                 'error' => $e->getMessage(),
+                'id' => $id,
+                'data' => $data
             ]);
             throw $e;
         }
     }
+
+    /**
+     * Update an appointment in the appointments table.
+     *
+     * @param string $appointmentId
+     * @param array $data
+     * @return array|null
+     * @throws \Exception
+     */
+    public function updateAppointment(string $appointmentId, array $data)
+    {
+        try {
+            // Validate appointment status if provided
+            if (isset($data['status'])) {
+                $validStatuses = ['arranged', 'in_appointment', 'completed', 'cancelled'];
+                if (!in_array($data['status'], $validStatuses)) {
+                    throw new \Exception("Invalid appointment status. Must be one of: " . implode(', ', $validStatuses));
+                }
+            }
+
+            // Validate datetime fields if provided
+            if (isset($data['start_time'])) {
+                $data['start_time'] = date('c', strtotime($data['start_time'])); // Convert to ISO 8601
+            }
+            if (isset($data['end_time'])) {
+                $data['end_time'] = date('c', strtotime($data['end_time'])); // Convert to ISO 8601
+            }
+
+            Log::info("Updating appointment", [
+                'appointment_id' => $appointmentId,
+                'update_data' => $data
+            ]);
+
+            $result = $this->updateById('appointments', $appointmentId, $data);
+
+            if ($result) {
+                Log::info("Appointment updated successfully", [
+                    'appointment_id' => $appointmentId,
+                    'updated_data' => $result
+                ]);
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error("Error updating appointment", [
+                'appointment_id' => $appointmentId,
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
+            throw $e;
+        }
+    }
+
+    
 
     public function fetchByQuery(string $tableName, array $filters, array $columns = ['*'])
     {
@@ -584,53 +610,6 @@ public function fetchTable(string $tableName, array $queryParams = [])
         }
     }
 
-    public function createCompleteDentist($data)
-    {
-        try {
-            $response = $this->supabaseClient(true)
-                ->post("{$this->baseUrl}/rest/v1/rpc/create_complete_dentist", [
-                    'p_first_name' => $data['first_name'],
-                    'p_last_name' => $data['last_name'],
-                    'p_email' => $data['email'],
-                    'p_phone' => $data['phone'],
-                    'p_specialization' => $data['specialization'],
-                    'p_bio' => $data['bio'] ?? null,
-                    'p_working_hours' => $data['working_hours'] ?? null,
-                    'p_off_days' => $data['off_days'] ?? null,
-                    'p_email_verified' => isset($data['email_verified']) && $data['email_verified'],
-                    'p_phone_verified' => isset($data['phone_verified']) && $data['phone_verified']
-                ]);
-
-            if ($response->successful()) {
-                $responseData = $response->json();
-                Log::info('Dentist created successfully', ['response' => $responseData]);
-                return [
-                    'success' => true,
-                    'data' => array_merge($data, ['id' => $responseData['id'] ?? null])
-                ];
-            }
-
-            Log::error('Failed to create complete dentist in Supabase', [
-                'statusCode' => $response->status(),
-                'error' => $response->body()
-            ]);
-
-            return [
-                'success' => false,
-                'error' => 'Failed to create complete dentist in Supabase: ' . $response->body()
-            ];
-        } catch (Exception $e) {
-            Log::error('Exception while creating complete dentist in Supabase', [
-                'exception' => $e->getMessage()
-            ]);
-
-            return [
-                'success' => false,
-                'error' => 'Exception while creating complete dentist in Supabase: ' . $e->getMessage()
-            ];
-        }
-    }
-
     public function createCompleteReceptionist($data)
     {
         try {
@@ -672,6 +651,51 @@ public function fetchTable(string $tableName, array $queryParams = [])
             return [
                 'success' => false,
                 'error' => 'Exception while creating complete receptionist in Supabase: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    public function createCompleteDentist($data)
+    {
+        try {
+            $response = $this->supabaseClient(true)
+                ->post("{$this->baseUrl}/rest/v1/rpc/create_complete_dentist", [
+                    'p_first_name' => $data['first_name'],
+                    'p_last_name' => $data['last_name'],
+                    'p_email' => $data['email'],
+                    'p_phone' => $data['phone'],
+                    'p_specialization' => $data['specialization'] ?? null,
+                    'p_license_number' => $data['license_number'] ?? null,
+                    'p_email_verified' => isset($data['email_verified']) && $data['email_verified'],
+                    'p_phone_verified' => isset($data['phone_verified']) && $data['phone_verified']
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Dentist created successfully', ['response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => array_merge($data, ['id' => $responseData['id'] ?? null])
+                ];
+            }
+
+            Log::error('Failed to create complete dentist in Supabase', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to create complete dentist in Supabase: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while creating complete dentist in Supabase', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while creating complete dentist in Supabase: ' . $e->getMessage()
             ];
         }
     }
@@ -801,7 +825,7 @@ public function fetchTable(string $tableName, array $queryParams = [])
         }
     }
 
-        public function updateUserAvatarPath($userId, $avatarUrl)
+    public function updateUserAvatarPath($userId, $avatarUrl)
     {
         try {
             Log::info('Updating user avatar URL', [
@@ -860,6 +884,181 @@ public function fetchTable(string $tableName, array $queryParams = [])
                 'success' => false,
                 'error' => 'Exception while updating avatar path in user profile: ' . $e->getMessage()
             ];
+        }
+    }
+
+    /**
+     * Insert a new record into a Supabase table.
+     *
+     * @param string $tableName
+     * @param array $data
+     * @return array|null
+     * @throws \Exception
+     */
+    public function insert(string $tableName, array $data)
+    {
+        try {
+            $url = "{$this->baseUrl}/rest/v1/{$tableName}";
+            $headers = [
+                'apikey' => $this->apiKey,
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+                'Prefer' => 'return=representation'
+            ];
+
+            Log::info("Supabase insert request", [
+                'table' => $tableName,
+                'url' => $url,
+                'headers' => array_keys($headers),
+                'data' => $data,
+            ]);
+
+            $response = Http::withHeaders($headers)->post($url, [$data]);
+
+            Log::info("Supabase insert response", [
+                'table' => $tableName,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            if ($response->failed()) {
+                Log::error("Supabase insert error", [
+                    'table' => $tableName,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                throw new \Exception("Failed to insert record into table '{$tableName}'");
+            }
+
+            $json = $response->json();
+            return is_array($json) && isset($json[0]) ? $json[0] : $json;
+        } catch (\Exception $e) {
+            Log::error("Error in insert", [
+                'table' => $tableName,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Authenticate user with Supabase Auth
+     */
+    public function signInWithEmail($email, $password)
+    {
+        try {
+            $response = Http::withHeaders([
+                'apikey' => $this->anonKey,
+                'Content-Type' => 'application/json',
+            ])->post($this->url . '/auth/v1/token?grant_type=password', [
+                'email' => $email,
+                'password' => $password,
+            ]);
+
+            if ($response->successful()) {
+                $authData = $response->json();
+                
+                // Get user profile data
+                $userProfile = $this->getUserProfile($authData['user']['id']);
+                
+                return [
+                    'success' => true,
+                    'user' => $authData['user'],
+                    'access_token' => $authData['access_token'],
+                    'profile' => $userProfile,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'error' => $response->json()['error_description'] ?? 'Authentication failed',
+            ];
+        } catch (\Exception $e) {
+            Log::error('Supabase authentication error: ' . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => 'Authentication service unavailable',
+            ];
+        }
+    }
+
+    /**
+     * Get user profile from user_profiles table
+     */
+    public function getUserProfile($userId)
+    {
+        try {
+            $response = Http::withHeaders([
+                'apikey' => $this->anonKey,
+                'Authorization' => 'Bearer ' . $this->anonKey,
+                'Content-Type' => 'application/json',
+            ])->get($this->url . '/rest/v1/user_profiles', [
+                'id' => 'eq.' . $userId,
+                'select' => '*',
+            ]);
+
+            if ($response->successful()) {
+                $profiles = $response->json();
+                return !empty($profiles) ? $profiles[0] : null;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Supabase get user profile error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Find user by email in user_profiles table
+     */
+    public function findUserByEmail($email)
+    {
+        try {
+            $response = Http::withHeaders([
+                'apikey' => $this->anonKey,
+                'Authorization' => 'Bearer ' . $this->anonKey,
+                'Content-Type' => 'application/json',
+            ])->get($this->url . '/rest/v1/user_profiles', [
+                'email' => 'eq.' . $email,
+                'select' => '*',
+            ]);
+
+            if ($response->successful()) {
+                $profiles = $response->json();
+                return !empty($profiles) ? $profiles[0] : null;
+            }
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Supabase find user by email error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Get all users with specific role
+     */
+    public function getUsersByRole($role)
+    {
+        try {
+            $response = Http::withHeaders([
+                'apikey' => $this->anonKey,
+                'Authorization' => 'Bearer ' . $this->anonKey,
+                'Content-Type' => 'application/json',
+            ])->get($this->url . '/rest/v1/user_profiles', [
+                'role' => 'eq.' . $role,
+                'select' => '*',
+            ]);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            return [];
+        } catch (\Exception $e) {
+            Log::error('Supabase get users by role error: ' . $e->getMessage());
+            return [];
         }
     }
 }

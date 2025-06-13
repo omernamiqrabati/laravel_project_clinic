@@ -44,7 +44,9 @@
                 <tbody>
                     @forelse ($appointments as $appointment)
                         <tr class="hover:bg-gray-50 border-t">
-                            <td class="px-5 py-3">{{ $appointment['appointment_id'] }}</td>
+                            <td class="px-5 py-3" title="{{ $appointment['appointment_id'] }}">
+                                {{ strlen($appointment['appointment_id']) > 8 ? substr($appointment['appointment_id'], 0, 8) . '...' : $appointment['appointment_id'] }}
+                            </td>
                             <td class="px-5 py-3 text-gray-900">
                                 @php
                                     $patient = collect($patients_name)->firstWhere('id', $appointment['patient_id']);
@@ -79,7 +81,12 @@
                                 </span>
                             </td>
                             <td class="px-5 py-3 text-gray-700">
-                                {{ $appointment['notes'] ?? 'No notes' }}
+                                @php
+                                    $notes = $appointment['notes'] ?? 'No notes';
+                                    $words = explode(' ', $notes);
+                                    $shortNotes = count($words) > 3 ? implode(' ', array_slice($words, 0, 3)) . '...' : $notes;
+                                @endphp
+                                {{ $shortNotes }}
                             </td>
                             <td class="px-5 py-3 text-center">
                                 <div class="flex justify-center space-x-3">

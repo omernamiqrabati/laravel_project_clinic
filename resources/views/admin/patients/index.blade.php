@@ -40,7 +40,9 @@
                 <tbody>
                     @forelse ($patients as $patient)
                         <tr class="hover:bg-gray-50 border-t">
-                            <td class="px-5 py-3">{{ $patient['patient_id'] }}</td>
+                            <td class="px-5 py-3" title="{{ $patient['patient_id'] }}">
+                                {{ strlen($patient['patient_id']) > 8 ? substr($patient['patient_id'], 0, 8) . '...' : $patient['patient_id'] }}
+                            </td>
                             <td class="px-5 py-3">{{ $patient['date_of_birth'] }}</td>
                             <td class="px-5 py-3">{{ $patient['gender'] }}</td>
                             <td class="px-5 py-3 text-gray-700">{{ $patient['address'] }}</td>

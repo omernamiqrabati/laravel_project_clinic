@@ -46,9 +46,9 @@
                         @endphp
 
                         <tr class="hover:bg-gray-50 border-t">
-                            <td class="px-5 py-3">{{ $dentist['dentist_id'] }}</td>
+                            <td class="px-5 py-3">{{ substr($dentist['dentist_id'], 0, 8) }}...</td>
                             <td class="px-5 py-3">{{ $dentist['specialization'] }}</td>
-                            <td class="px-5 py-3 text-gray-700">{{ $dentist['bio'] }}</td>
+                            <td class="px-5 py-3 text-gray-700">{{ implode(' ', array_slice(explode(' ', $dentist['bio']), 0, 4)) }}...</td>
 
                             <td class="px-5 py-3">
                                 @if(!empty($workingHours))
@@ -68,11 +68,14 @@
                             <td class="px-5 py-3">
                                 @if(!empty($offDays))
                                     <ul class="text-xs text-gray-600 space-y-1">
-                                        @foreach($offDays as $date)
+                                        @foreach(array_slice($offDays, 0, 4) as $date)
                                             <li class="inline-block bg-gray-100 border border-gray-300 px-2 py-1 rounded">
                                                 {{ $date }}
                                             </li>
                                         @endforeach
+                                        @if(count($offDays) > 4)
+                                            <li class="inline-block text-gray-500">...</li>
+                                        @endif
                                     </ul>
                                 @else
                                     <span class="text-gray-400 italic">None</span>

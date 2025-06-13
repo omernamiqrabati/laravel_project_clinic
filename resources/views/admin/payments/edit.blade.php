@@ -49,10 +49,7 @@
                     <option value="">Select Payment Method</option>
                     <option value="Cash" {{ old('method_of_payment', $payment['method_of_payment']) == 'Cash' ? 'selected' : '' }}>Cash</option>
                     <option value="Credit Card" {{ old('method_of_payment', $payment['method_of_payment']) == 'Credit Card' ? 'selected' : '' }}>Credit Card</option>
-                    <option value="Debit Card" {{ old('method_of_payment', $payment['method_of_payment']) == 'Debit Card' ? 'selected' : '' }}>Debit Card</option>
-                    <option value="Bank Transfer" {{ old('method_of_payment', $payment['method_of_payment']) == 'Bank Transfer' ? 'selected' : '' }}>Bank Transfer</option>
-                    <option value="Check" {{ old('method_of_payment', $payment['method_of_payment']) == 'Check' ? 'selected' : '' }}>Check</option>
-                    <option value="Insurance" {{ old('method_of_payment', $payment['method_of_payment']) == 'Insurance' ? 'selected' : '' }}>Insurance</option>
+                
                 </select>
             </div>
         </div>

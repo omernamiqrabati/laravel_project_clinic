@@ -89,26 +89,34 @@ class AppointmentController extends Controller
                 'reschedule_reason' => 'nullable|string|required_if:status,Rescheduled'
             ]);
 
-            $appointmentData = [
-                'appointment_id' => (string) Str::uuid(),
+            // Map form status values to database status values
+            $statusMapping = [
+                'Scheduled' => 'arranged',
+                'Completed' => 'completed',
+                'Cancelled' => 'cancelled',
+                'Rescheduled' => 'arranged' // Rescheduled appointments are typically 'arranged' in the DB
+            ];
+
+            $data = [
                 'patient_id' => $validatedData['patient_id'],
                 'dentist_id' => $validatedData['dentist_id'],
                 'treatment_id' => $validatedData['treatment_id'],
                 'start_time' => $validatedData['start_time'],
                 'end_time' => $validatedData['end_time'],
-                'status' => $validatedData['status'],
+                'status' => $statusMapping[$validatedData['status']], // Map to correct DB status
                 'notes' => $validatedData['notes'] ?? null,
                 'cancellation_reason' => $validatedData['cancellation_reason'] ?? null,
                 'reschedule_reason' => $validatedData['reschedule_reason'] ?? null,
+                'created_by' => auth()->id() ?? $validatedData['patient_id'],
                 'created_at' => now(),
-                'updated_at' => now()
+                'updated_at' => null
             ];
 
-            $this->supabase->insert_table('appointments', $appointmentData);
+            $this->supabase->insert('appointments', $data);
 
             return redirect()->route('admin.appointments.index')->with('success', 'Appointment created successfully');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error creating appointment: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Error creating appointment: ' . $e->getMessage());
         }
     }
 
@@ -140,12 +148,19 @@ class AppointmentController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+        public function update(Request $request, $id)
     {
         try {
+            // First, check if the appointment exists
+            $appointment = $this->supabase->fetchById('appointments', $id);
+            if (empty($appointment)) {
+                return back()->with('error', 'Appointment not found');
+            }
+
+            // Validate the form data from edit.blade.php
             $validatedData = $request->validate([
                 'patient_id' => 'required|uuid',
-                'dentist_id' => 'required|uuid',
+                'dentist_id' => 'required|uuid', 
                 'treatment_id' => 'required|uuid',
                 'start_time' => 'required|date',
                 'end_time' => 'required|date|after:start_time',
@@ -155,24 +170,96 @@ class AppointmentController extends Controller
                 'reschedule_reason' => 'nullable|string|required_if:status,Rescheduled'
             ]);
 
+            // Log the incoming form data for debugging
+            \Log::info('Appointment update form data received', [
+                'appointment_id' => $id,
+                'form_data' => $validatedData
+            ]);
+
+            // Validate that referenced records exist
+            try {
+                $patient = $this->supabase->fetchById('patients', $validatedData['patient_id']);
+                if (empty($patient)) {
+                    return back()->withInput()->with('error', 'Selected patient does not exist');
+                }
+            } catch (\Exception $e) {
+                return back()->withInput()->with('error', 'Error validating patient: ' . $e->getMessage());
+            }
+
+            try {
+                $dentist = $this->supabase->fetchById('dentists', $validatedData['dentist_id']);
+                if (empty($dentist)) {
+                    return back()->withInput()->with('error', 'Selected dentist does not exist');
+                }
+            } catch (\Exception $e) {
+                return back()->withInput()->with('error', 'Error validating dentist: ' . $e->getMessage());
+            }
+
+            try {
+                $treatment = $this->supabase->fetchById('treatments', $validatedData['treatment_id']);
+                if (empty($treatment)) {
+                    return back()->withInput()->with('error', 'Selected treatment does not exist');
+                }
+            } catch (\Exception $e) {
+                return back()->withInput()->with('error', 'Error validating treatment: ' . $e->getMessage());
+            }
+
+            // Map form status values to database status values
+            $statusMapping = [
+                'Scheduled' => 'arranged',
+                'Completed' => 'completed',
+                'Cancelled' => 'cancelled',
+                'Rescheduled' => 'arranged' // Rescheduled appointments are typically 'arranged' in the DB
+            ];
+
+            // Convert datetime-local format to proper ISO format
+            $startTime = date('Y-m-d H:i:s', strtotime($validatedData['start_time']));
+            $endTime = date('Y-m-d H:i:s', strtotime($validatedData['end_time']));
+
+            // Prepare update data from form inputs
             $updateData = [
                 'patient_id' => $validatedData['patient_id'],
                 'dentist_id' => $validatedData['dentist_id'],
                 'treatment_id' => $validatedData['treatment_id'],
-                'start_time' => $validatedData['start_time'],
-                'end_time' => $validatedData['end_time'],
-                'status' => $validatedData['status'],
+                'start_time' => $startTime,
+                'end_time' => $endTime,
+                'status' => $statusMapping[$validatedData['status']], // Map to correct DB status
                 'notes' => $validatedData['notes'] ?? null,
                 'cancellation_reason' => $validatedData['cancellation_reason'] ?? null,
                 'reschedule_reason' => $validatedData['reschedule_reason'] ?? null,
-                'updated_at' => now()
             ];
 
-            $this->supabase->updateById('appointments', $id, $updateData);
-            
-            return redirect()->route('admin.appointments.index')->with('success', 'Appointment updated successfully');
+            \Log::info('Appointment update data prepared', [
+                'appointment_id' => $id,
+                'update_data' => $updateData
+            ]);
+
+            // Update the appointment using SupabaseService
+            $result = $this->supabase->updateAppointment($id, $updateData);
+
+            \Log::info('Appointment updated successfully', [
+                'appointment_id' => $id,
+                'result' => $result
+            ]);
+
+            return redirect()->route('admin.appointments.index')
+                ->with('success', 'Appointment updated successfully');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed for appointment update', [
+                'appointment_id' => $id,
+                'errors' => $e->errors()
+            ]);
+            return back()->withErrors($e->validator)->withInput()
+                ->with('error', 'Validation failed. Please check your input.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Error updating appointment: ' . $e->getMessage());
+            \Log::error('Error updating appointment', [
+                'appointment_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withInput()
+                ->with('error', 'Error updating appointment: ' . $e->getMessage());
         }
     }
 
@@ -185,4 +272,6 @@ class AppointmentController extends Controller
             return back()->with('error', 'Error deleting appointment: ' . $e->getMessage());
         }
     }
+
+
 }

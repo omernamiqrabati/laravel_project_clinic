@@ -42,7 +42,7 @@
                 <tbody>
                     @forelse ($treatments as $treatment)
                         <tr class="hover:bg-gray-50 border-t">
-                            <td class="px-5 py-3">{{ $treatment['treatment_id'] }}</td>
+                            <td class="px-5 py-3" title="{{ $treatment['treatment_id'] }}">{{ substr($treatment['treatment_id'], 0, 8) }}...</td>
                             <td class="px-5 py-3 text-gray-900">{{ $treatment['name'] }}</td>
                             <td class="px-5 py-3 text-gray-700">{{ $treatment['description'] }}</td>
                             <td class="px-5 py-3 text-gray-900">${{ number_format($treatment['cost'], 2) }}</td>

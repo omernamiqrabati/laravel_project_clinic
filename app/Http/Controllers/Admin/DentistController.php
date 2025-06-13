@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\SupabaseService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // For HTTP client
 
 class DentistController extends Controller
 {
@@ -43,74 +45,61 @@ class DentistController extends Controller
     public function store(Request $request)
     {
         try {
+            // 1. Validate the request data
             $validatedData = $request->validate([
-                'first_name' => 'required|string',
-                'last_name' => 'required|string',
-                'email' => 'required|email',
-                'phone' => 'required|string',
-                'specialization' => 'required|string',
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:20',
+                'specialization' => 'required|string|max:255',
                 'bio' => 'nullable|string',
-                'working_hours_json' => 'required|json',
-                'off_days' => 'nullable|string',
+                'avatar' => 'nullable|image|max:5120', // 5MB max
                 'email_verified' => 'nullable|boolean',
                 'phone_verified' => 'nullable|boolean',
-                'avatar' => 'nullable|image|max:5120' // Validate image upload
+                'working_hours_json' => 'required|json',
+                'off_days' => 'nullable|json'
             ]);
 
-            // Prepare data for dentist creation
+            // 2. Prepare data for dentist creation
             $dentistData = [
                 'first_name' => $validatedData['first_name'],
                 'last_name' => $validatedData['last_name'],
                 'email' => $validatedData['email'],
                 'phone' => $validatedData['phone'],
                 'specialization' => $validatedData['specialization'],
-                'bio' => $validatedData['bio'] ?? null,
-                'working_hours' => json_decode($validatedData['working_hours_json'], true),
-                'off_days' => $validatedData['off_days'] ? explode(',', $validatedData['off_days']) : null,
+                'bio' => $validatedData['bio'] ?? '',
                 'email_verified' => isset($validatedData['email_verified']),
-                'phone_verified' => isset($validatedData['phone_verified'])
+                'phone_verified' => isset($validatedData['phone_verified']),
+                'working_hours' => json_decode($validatedData['working_hours_json'], true),
+                'off_days' => isset($validatedData['off_days']) ? json_decode($validatedData['off_days'], true) : []
             ];
 
-            // Create dentist using RPC function
+            // 3. Create dentist using SupabaseService
             $result = $this->supabase->createCompleteDentist($dentistData);
-            
+
             if (!$result['success']) {
                 return back()->withInput()->with('error', $result['error']);
             }
 
-            // Get the ID of the newly created dentist
             $dentistId = $result['data']['id'];
-            
-            Log::info('Dentist created successfully, now handling avatar', [
-                'dentist_id' => $dentistId
-            ]);
 
-            // Handle file upload if avatar is present
+            // 4. Handle avatar upload if present
             if ($request->hasFile('avatar')) {
-                Log::info('Avatar file is present in the request', [
-                    'dentist_id' => $dentistId,
-                    'file_name' => $request->file('avatar')->getClientOriginalName(),
-                    'file_size' => $request->file('avatar')->getSize()
-                ]);
-                
-                // Upload avatar to Supabase storage
-                $uploadResult = $this->supabase->uploadUserAvatar($dentistId, $request->file('avatar'));
-                
-                // The uploadUserAvatar method now updates the profile directly
-                if (!$uploadResult['success']) {
-                    Log::error('Failed to upload avatar', [
-                        'dentist_id' => $dentistId,
-                        'error' => $uploadResult['error']
-                    ]);
+                $avatarFile = $request->file('avatar');
+                if ($avatarFile->isValid()) {
+                    $uploadResult = $this->supabase->uploadUserAvatar($dentistId, $avatarFile);
+                    if (!$uploadResult['success']) {
+                        return redirect()->route('admin.dentists.index')
+                            ->with('warning', 'Dentist created but avatar upload failed: ' . $uploadResult['error']);
+                    }
+                } else {
+                    return redirect()->route('admin.dentists.index')
+                        ->with('warning', 'Dentist created but avatar could not be processed: File is not valid');
                 }
             }
 
             return redirect()->route('admin.dentists.index')->with('success', 'Dentist created successfully');
         } catch (\Exception $e) {
-            Log::error('Error in DentistController@store', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return back()->withInput()->with('error', 'Error creating dentist: ' . $e->getMessage());
         }
     }
@@ -120,8 +109,15 @@ class DentistController extends Controller
         try {
             $dentist = $this->supabase->fetchById('dentists', $id);
 
-            // Decode working_hours JSON string to array
-            $dentist['working_hours'] = is_string($dentist['working_hours']) ? json_decode($dentist['working_hours'], true) : $dentist['working_hours'];
+            // Ensure working_hours is properly formatted
+            if (is_string($dentist['working_hours'])) {
+                $dentist['working_hours'] = json_decode($dentist['working_hours'], true);
+            }
+
+            // Ensure off_days is properly formatted
+            if (is_string($dentist['off_days'])) {
+                $dentist['off_days'] = json_decode($dentist['off_days'], true);
+            }
 
             return view('admin.dentists.edit', compact('dentist'));
         } catch (\Exception $e) {
@@ -129,12 +125,29 @@ class DentistController extends Controller
         }
     }
 
-    public function update(Request $request, $dentist_id)
+    public function update(Request $request, $id)
     {
         try {
-            return $request;
-        } catch (\Exception $e) {
-            return 5;
-        }
+            $validatedData = $request->validate([
+                'specialization' => 'required|string|max:255',
+                'bio' => 'nullable|string',
+                'working_hours_json' => 'required|json',
+                'off_days' => 'nullable|json'
+            ]);
+
+            $data = [
+                'specialization' => $validatedData['specialization'],
+                'bio' => $validatedData['bio'],
+                'working_hours' => json_decode($validatedData['working_hours_json'], true),
+                'off_days' => json_decode($validatedData['off_days'], true) ?? []
+            ];
+
+            $this->supabase->updateById('dentists', $id, $data);
+
+            return redirect()->route('admin.dentists.index')
+                ->with('success', 'Dentist updated successfully');
+            } catch (\Exception $e) {
+            return back()->with('error', 'Error updating dentist: ' . $e->getMessage());
+        }   
     }
 }
