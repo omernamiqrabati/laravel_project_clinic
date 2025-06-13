@@ -9,11 +9,18 @@
 
         @if($errors->any())
             <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-                <ul class="list-disc list-inside">
+                <h4 class="font-bold mb-2">Please fix the following errors:</h4>
+                <ul class="list-disc list-inside space-y-1">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
                 </ul>
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+                {{ session('error') }}
             </div>
         @endif
 
@@ -22,37 +29,52 @@
 
             <!-- First Name -->
             <div>
-                <label for="first_name" class="block text-sm font-semibold text-gray-700">First Name</label>
+                <label for="first_name" class="block text-sm font-semibold text-gray-700">First Name *</label>
                 <input type="text" name="first_name" id="first_name" value="{{ old('first_name') }}"
-                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200" required>
+                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 @error('first_name') border-red-500 @enderror" required>
+                @error('first_name')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Last Name -->
             <div>
-                <label for="last_name" class="block text-sm font-semibold text-gray-700">Last Name</label>
+                <label for="last_name" class="block text-sm font-semibold text-gray-700">Last Name *</label>
                 <input type="text" name="last_name" id="last_name" value="{{ old('last_name') }}"
-                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200" required>
+                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 @error('last_name') border-red-500 @enderror" required>
+                @error('last_name')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Email -->
             <div>
-                <label for="email" class="block text-sm font-semibold text-gray-700">Email</label>
+                <label for="email" class="block text-sm font-semibold text-gray-700">Email *</label>
                 <input type="email" name="email" id="email" value="{{ old('email') }}"
-                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200" required>
+                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 @error('email') border-red-500 @enderror" required>
+                @error('email')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Phone -->
             <div>
-                <label for="phone" class="block text-sm font-semibold text-gray-700">Phone</label>
+                <label for="phone" class="block text-sm font-semibold text-gray-700">Phone *</label>
                 <input type="text" name="phone" id="phone" value="{{ old('phone') }}"
-                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200" required>
+                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 @error('phone') border-red-500 @enderror" required>
+                @error('phone')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Specialization -->
             <div>
-                <label for="specialization" class="block text-sm font-semibold text-gray-700">Specialization</label>
+                <label for="specialization" class="block text-sm font-semibold text-gray-700">Specialization *</label>
                 <input type="text" name="specialization" id="specialization" value="{{ old('specialization') }}"
-                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200" required>
+                       class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 @error('specialization') border-red-500 @enderror" required>
+                @error('specialization')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Bio -->
@@ -69,39 +91,22 @@
                        class="mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200">
             </div>
 
-            <!-- Email Verified -->
-            <div>
-                <label for="email_verified" class="flex items-center">
-                    <input type="checkbox" name="email_verified" id="email_verified" value="1"
-                           {{ old('email_verified') ? 'checked' : '' }}
-                           class="mr-2 border-gray-300 rounded focus:ring focus:ring-blue-200">
-                    <span class="text-sm font-semibold text-gray-700">Email Verified</span>
-                </label>
-            </div>
 
-            <!-- Phone Verified -->
-            <div>
-                <label for="phone_verified" class="flex items-center">
-                    <input type="checkbox" name="phone_verified" id="phone_verified" value="1"
-                           {{ old('phone_verified') ? 'checked' : '' }}
-                           class="mr-2 border-gray-300 rounded focus:ring focus:ring-blue-200">
-                    <span class="text-sm font-semibold text-gray-700">Phone Verified</span>
-                </label>
-            </div>
 
             <!-- Working Hours -->
             @php
-                $daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+                $daysOfWeek = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
             @endphp
 
             <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Working Hours</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Working Hours *</label>
+                <p class="text-sm text-gray-600 mb-3">At least one day must have working hours set.</p>
                 <div id="working-hours-container" class="space-y-4">
                     @foreach($daysOfWeek as $day)
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                             <div>
                                 <label class="block text-sm font-medium text-gray-600">Day</label>
-                                <input type="text" name="working_hours[{{ $day }}][day]" value="{{ $day }}"
+                                <input type="text" name="working_hours[{{ $day }}][day]" value="{{ ucfirst($day) }}"
                                        readonly class="w-full bg-gray-100 border rounded-md p-2">
                             </div>
                             <div>
@@ -117,6 +122,9 @@
                         </div>
                     @endforeach
                 </div>
+                @error('working_hours_json')
+                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
             <!-- Off Days -->
@@ -142,15 +150,19 @@
             </div>
 
             <!-- Hidden JSON Input -->
-            <input type="hidden" name="working_hours_json" id="working_hours_json">
+            <input type="hidden" name="working_hours_json" id="working_hours_json" value="">
+            @error('working_hours_json')
+                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+            @enderror
 
             <!-- Submit Button -->
             <div class="flex justify-end space-x-3">
                 <a href="{{ route('admin.dentists.index') }}" class="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">
                     Cancel
                 </a>
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    Create Dentist
+                <button type="submit" id="submit-btn" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                    <span id="submit-text">Create Dentist</span>
+                    <span id="submit-loading" class="hidden">Creating...</span>
                 </button>
             </div>
         </form>
@@ -159,19 +171,80 @@
     <!-- JS Section -->
     <script>
         document.querySelector('form').addEventListener('submit', function(event) {
+            console.log('Form submit event triggered');
+            
+            // Prevent the default submission first
+            event.preventDefault();
+            
             const rows = document.querySelectorAll('#working-hours-container .grid');
-            const workingHours = [];
+            const workingHours = {};
 
-            rows.forEach(row => {
-                const day = row.querySelector('input[name*="[day]"]').value;
-                const start = row.querySelector('input[name*="[start]"]').value;
-                const end = row.querySelector('input[name*="[end]"]').value;
-                if (start && end) {
-                    workingHours.push({ day, start, end });
+            rows.forEach((row, index) => {
+                const dayInput = row.querySelector('input[name*="[day]"]');
+                const startInput = row.querySelector('input[name*="[start]"]');
+                const endInput = row.querySelector('input[name*="[end]"]');
+                
+                console.log(`Processing row ${index}:`, {
+                    dayInput: dayInput ? dayInput.value : 'not found',
+                    startInput: startInput ? startInput.value : 'not found',
+                    endInput: endInput ? endInput.value : 'not found'
+                });
+                
+                if (dayInput && startInput && endInput) {
+                    const day = dayInput.value.toLowerCase();
+                    const start = startInput.value;
+                    const end = endInput.value;
+                    
+                    console.log(`Day ${day}:`, { start, end });
+                    
+                    if (start && end) {
+                        workingHours[day] = { start, end };
+                        console.log(`Added working hours for ${day}:`, { start, end });
+                    }
                 }
             });
 
-            document.getElementById('working_hours_json').value = JSON.stringify(workingHours);
+            console.log('Working hours collected:', workingHours);
+            
+            // Validate that at least one day has working hours
+            if (Object.keys(workingHours).length === 0) {
+                console.log('No working hours set, preventing form submission');
+                alert('Please set working hours for at least one day.');
+                // Scroll to working hours section
+                document.querySelector('#working-hours-container').scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                return false;
+            }
+
+            const jsonValue = JSON.stringify(workingHours);
+            console.log('Setting working_hours_json value:', jsonValue);
+            document.getElementById('working_hours_json').value = jsonValue;
+            
+            // Verify the value was set
+            const verifyValue = document.getElementById('working_hours_json').value;
+            console.log('Verified working_hours_json value:', verifyValue);
+            
+            // Final validation before submission
+            if (!verifyValue || verifyValue === '{}' || verifyValue === '[]') {
+                alert('Error: Working hours data is not properly set. Please try again.');
+                console.error('Working hours JSON is empty or invalid:', verifyValue);
+                return false;
+            }
+            
+            // Show loading state
+            const submitBtn = document.getElementById('submit-btn');
+            const submitText = document.getElementById('submit-text');
+            const submitLoading = document.getElementById('submit-loading');
+            
+            submitBtn.disabled = true;
+            submitText.classList.add('hidden');
+            submitLoading.classList.remove('hidden');
+            
+            // Now submit the form
+            console.log('Submitting form with working hours:', verifyValue);
+            event.target.submit();
         });
 
         document.getElementById('add-off-day').addEventListener('click', function() {
@@ -215,19 +288,17 @@
             document.getElementById('specialization').value = 'Orthodontist';
             document.getElementById('bio').value = 'Experienced dentist specializing in orthodontics.';
 
-            // Checkboxes
-            document.getElementById('email_verified').checked = true;
-            document.getElementById('phone_verified').checked = true;
+
 
             // Working hours
             const workingHoursSample = {
-                'Monday':   { start: '09:00', end: '17:00' },
-                'Tuesday':  { start: '09:00', end: '17:00' },
-                'Wednesday':{ start: '09:00', end: '17:00' },
-                'Thursday': { start: '09:00', end: '17:00' },
-                'Friday':   { start: '09:00', end: '15:00' },
-                'Saturday': { start: '',      end: ''      },
-                'Sunday':   { start: '',      end: ''      }
+                'monday':    { start: '09:00', end: '17:00' },
+                'tuesday':   { start: '09:00', end: '17:00' },
+                'wednesday': { start: '09:00', end: '17:00' },
+                'thursday':  { start: '09:00', end: '17:00' },
+                'friday':    { start: '09:00', end: '15:00' },
+                'saturday':  { start: '',      end: ''      },
+                'sunday':    { start: '',      end: ''      }
             };
             Object.keys(workingHoursSample).forEach(day => {
                 const startInput = document.querySelector(`input[name='working_hours[${day}][start]']`);

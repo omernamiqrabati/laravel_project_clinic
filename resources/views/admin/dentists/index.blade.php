@@ -30,65 +30,46 @@
             <table class="min-w-full text-sm text-left whitespace-nowrap">
                 <thead class="bg-blue-100 text-blue-800 text-sm font-semibold">
                     <tr>
-                        <th class="px-5 py-3 border-b">ID</th>
+                        <th class="px-5 py-3 border-b">Photo</th>
+                        <th class="px-5 py-3 border-b">Full Name</th>
+                        <th class="px-5 py-3 border-b">Email</th>
                         <th class="px-5 py-3 border-b">Specialization</th>
-                        <th class="px-5 py-3 border-b">Bio</th>
-                        <th class="px-5 py-3 border-b">Working Hours</th>
-                        <th class="px-5 py-3 border-b">Off Days</th>
                         <th class="px-5 py-3 border-b text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($dentists as $dentist)
-                        @php
-                            $workingHours = is_string($dentist['working_hours']) ? json_decode($dentist['working_hours'], true) : $dentist['working_hours'];
-                            $offDays = is_string($dentist['off_days']) ? json_decode($dentist['off_days'], true) : $dentist['off_days'];
-                        @endphp
-
                         <tr class="hover:bg-gray-50 border-t">
-                            <td class="px-5 py-3">{{ substr($dentist['dentist_id'], 0, 8) }}...</td>
-                            <td class="px-5 py-3">{{ $dentist['specialization'] }}</td>
-                            <td class="px-5 py-3 text-gray-700">{{ implode(' ', array_slice(explode(' ', $dentist['bio']), 0, 4)) }}...</td>
-
                             <td class="px-5 py-3">
-                                @if(!empty($workingHours))
-                                    <ul class="list-disc pl-4 space-y-1 text-xs text-gray-600">
-                                        @foreach($workingHours as $wh)
-                                            <li>
-                                                <span class="font-medium">{{ $wh['day'] }}:</span>
-                                                {{ $wh['start'] }} – {{ $wh['end'] }}
-                                            </li>
-                                        @endforeach
-                                    </ul>
+                                @if(!empty($dentist['avatar']))
+                                    <img src="{{ $dentist['avatar'] }}" alt="{{ $dentist['first_name'] }} {{ $dentist['last_name'] }}" 
+                                         class="w-12 h-12 rounded-full object-cover border-2 border-gray-200 shadow-sm">
                                 @else
-                                    <span class="text-gray-400 italic">N/A</span>
+                                    <div class="w-12 h-12 rounded-full bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
                                 @endif
                             </td>
-
-                            <td class="px-5 py-3">
-                                @if(!empty($offDays))
-                                    <ul class="text-xs text-gray-600 space-y-1">
-                                        @foreach(array_slice($offDays, 0, 4) as $date)
-                                            <li class="inline-block bg-gray-100 border border-gray-300 px-2 py-1 rounded">
-                                                {{ $date }}
-                                            </li>
-                                        @endforeach
-                                        @if(count($offDays) > 4)
-                                            <li class="inline-block text-gray-500">...</li>
-                                        @endif
-                                    </ul>
-                                @else
-                                    <span class="text-gray-400 italic">None</span>
-                                @endif
+                            <td class="px-5 py-3 font-medium text-gray-900">
+                                {{ $dentist['first_name'] }} {{ $dentist['last_name'] }}
                             </td>
-
+                            <td class="px-5 py-3 text-gray-700">
+                                {{ $dentist['email'] }}
+                            </td>
+                            <td class="px-5 py-3">
+                                <span class="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                    {{ $dentist['specialization'] }}
+                                </span>
+                            </td>
                             <td class="px-5 py-3 text-center">
                                 <div class="flex justify-center space-x-3">
                                     <a href="{{ route('admin.dentists.edit', $dentist['dentist_id']) }}"
                                        class="text-yellow-600 hover:text-yellow-800 transition font-medium">Edit</a>
 
                                     <form action="{{ route('admin.dentists.destroy', $dentist['dentist_id']) }}"
-                                          method="POST" onsubmit="return confirm('Are you sure you want to delete this dentist?');">
+                                          method="POST" onsubmit="return confirm('⚠️ WARNING: This will permanently delete {{ $dentist['first_name'] }} {{ $dentist['last_name'] }} and ALL related data including:\n\n• All appointments\n• Clinical records\n• Appointment ratings\n• Invoices\n• User profile\n\nThis action CANNOT be undone. Are you absolutely sure?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit"
@@ -101,7 +82,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-5 py-5 text-center text-gray-500">
+                            <td colspan="5" class="px-5 py-5 text-center text-gray-500">
                                 No dentists found.
                             </td>
                         </tr>

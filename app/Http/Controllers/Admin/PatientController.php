@@ -20,9 +20,25 @@ class PatientController extends Controller
     public function index()
     {
         try {
-            $patients = $this->supabase->fetchTable('patients');
+            // Use the list_all_patients function to get complete data
+            $result = $this->supabase->listAllPatients();
+            
+            if (!$result['success']) {
+                Log::error('Failed to fetch patients from SupabaseService', [
+                    'error' => $result['error']
+                ]);
+                return back()->with('error', 'Failed to fetch patients: ' . $result['error']);
+            }
+
+            $patients = $result['data'];
+            Log::info('Patients data fetched for index', ['count' => count($patients)]);
+            
             return view('admin.patients.index', ['patients' => $patients]);
         } catch (\Exception $e) {
+            Log::error('Exception in PatientController@index', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'Error fetching patients: ' . $e->getMessage());
         }
     }
@@ -34,6 +50,8 @@ class PatientController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('PatientController@store started', ['request_data' => $request->except(['avatar'])]);
+        
         try {
             // Validate the request data
             $validatedData = $request->validate([
@@ -44,10 +62,10 @@ class PatientController extends Controller
                 'date_of_birth' => 'required|date',
                 'gender' => 'required|string|in:Male,Female,Other',
                 'address' => 'required|string|max:500',
-                'email_verified' => 'nullable|boolean',
-                'phone_verified' => 'nullable|boolean',
                 'avatar' => 'nullable|image|max:5120' // Validate image upload
             ]);
+
+            Log::info('Patient validation passed', ['validated_data' => collect($validatedData)->except(['avatar'])->toArray()]);
 
             // Prepare data for patient creation
             $patientData = [
@@ -57,15 +75,17 @@ class PatientController extends Controller
                 'phone' => $validatedData['phone'],
                 'date_of_birth' => $validatedData['date_of_birth'],
                 'gender' => $validatedData['gender'],
-                'address' => $validatedData['address'],
-                'email_verified' => isset($validatedData['email_verified']),
-                'phone_verified' => isset($validatedData['phone_verified'])
+                'address' => $validatedData['address']
             ];
 
             // Create patient using RPC function
             $result = $this->supabase->createCompletePatient($patientData);
             
             if (!$result['success']) {
+                Log::error('Failed to create patient via SupabaseService', [
+                    'error' => $result['error'],
+                    'patient_data' => $patientData
+                ]);
                 return back()->withInput()->with('error', $result['error']);
             }
 
@@ -102,7 +122,7 @@ class PatientController extends Controller
                 }
                 
                 // Upload avatar to Supabase storage
-                $uploadResult = $this->supabase->uploadUserAvatar($patientId, $avatarFile);
+                                    $uploadResult = $this->supabase->uploadAvatarAsAdmin($patientId, $avatarFile);
                 
                 // Check upload result
                 if ($uploadResult['success']) {
@@ -138,62 +158,210 @@ class PatientController extends Controller
 
     public function edit($id)
     {
+        Log::info('PatientController@edit started', ['patient_id' => $id]);
+        
         try {
-            $patient = $this->supabase->fetchById('patients', $id);
+            // Use the get_complete_patient function to get full patient data
+            $result = $this->supabase->getCompletePatient($id);
+            
+            if (!$result['success']) {
+                Log::error('Failed to fetch patient for edit', [
+                    'patient_id' => $id,
+                    'error' => $result['error']
+                ]);
+                return back()->with('error', 'Failed to fetch patient details: ' . $result['error']);
+            }
+
+            $patient = $result['data'];
+            Log::info('Patient data fetched for edit', ['patient_id' => $id, 'patient_data' => $patient]);
+            
             return view('admin.patients.edit', compact('patient'));
         } catch (\Exception $e) {
+            Log::error('Exception in PatientController@edit', [
+                'patient_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'Error fetching patient details: ' . $e->getMessage());
         }
     }
 
     public function update(Request $request, $id)
     {
+        Log::info('PatientController@update started', [
+            'patient_id' => $id,
+            'request_data' => $request->except(['avatar'])
+        ]);
+        
         try {
+            // Validate the request data
             $validatedData = $request->validate([
-                // Basic validation for update
-                'first_name' => 'sometimes|required|string|max:255',
-                'last_name' => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|email|max:255',
-                'phone' => 'sometimes|required|string|max:20',
-                'date_of_birth' => 'sometimes|required|date',
-                'gender' => 'sometimes|required|string|in:Male,Female,Other',
-                'address' => 'sometimes|required|string|max:500'
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:20',
+                'date_of_birth' => 'required|date',
+                'gender' => 'required|string|in:Male,Female,Other',
+                'address' => 'required|string|max:500',
+                'avatar' => 'nullable|image|max:5120'
             ]);
 
-            // Update both tables as needed
-            if (isset($validatedData['first_name']) || isset($validatedData['last_name']) || isset($validatedData['email']) || isset($validatedData['phone'])) {
-                $userData = array_intersect_key($validatedData, array_flip(['first_name', 'last_name', 'email', 'phone']));
-                $userData['updated_at'] = now();
-                $this->supabase->updateById('user_profiles', $id, $userData);
+            Log::info('Patient update validation passed', [
+                'patient_id' => $id,
+                'validated_data' => collect($validatedData)->except(['avatar'])->toArray()
+            ]);
+
+            // Use the database function to update complete patient data (bypasses RLS issues)
+            try {
+                $updateData = [
+                    'first_name' => $validatedData['first_name'],
+                    'last_name' => $validatedData['last_name'],
+                    'email' => $validatedData['email'],
+                    'phone' => $validatedData['phone'],
+                    'date_of_birth' => $validatedData['date_of_birth'],
+                    'gender' => $validatedData['gender'],
+                    'address' => $validatedData['address']
+                ];
+
+                Log::info('Attempting to update complete patient data', [
+                    'patient_id' => $id,
+                    'data' => $updateData
+                ]);
+
+                $updateResult = $this->supabase->updateCompletePatient($id, $updateData);
+                
+                if (!$updateResult['success']) {
+                    Log::error('Failed to update complete patient', [
+                        'patient_id' => $id,
+                        'error' => $updateResult['error']
+                    ]);
+                    return back()->withInput()->with('error', 'Failed to update patient: ' . $updateResult['error']);
+                }
+
+                $updateData = $updateResult['data'];
+                Log::info('Patient updated successfully using database function', [
+                    'patient_id' => $id,
+                    'result' => $updateData
+                ]);
+                
+            } catch (\Exception $e) {
+                Log::error('Failed to update complete patient data', [
+                    'patient_id' => $id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return back()->withInput()->with('error', 'Failed to update patient: ' . $e->getMessage());
             }
 
-            $patientData = array_intersect_key($validatedData, array_flip(['date_of_birth', 'gender', 'address']));
-            if (!empty($patientData)) {
-                $patientData['updated_at'] = now();
-                $this->supabase->updateById('patients', $id, $patientData);
+            // Handle avatar upload if present
+            if ($request->hasFile('avatar')) {
+                $avatarFile = $request->file('avatar');
+                
+                Log::info('Processing avatar upload for patient update', [
+                    'patient_id' => $id,
+                    'file_name' => $avatarFile->getClientOriginalName()
+                ]);
+                
+                if ($avatarFile->isValid()) {
+                    $uploadResult = $this->supabase->uploadAvatarAsAdmin($id, $avatarFile);
+                    
+                    if ($uploadResult['success']) {
+                        Log::info('Avatar uploaded successfully, updating patient with new avatar URL', [
+                            'patient_id' => $id,
+                            'avatar_url' => $uploadResult['public_url']
+                        ]);
+                        
+                        // Update the patient again with the new avatar URL
+                        try {
+                            $avatarUpdateData = [
+                                'first_name' => $validatedData['first_name'],
+                                'last_name' => $validatedData['last_name'],
+                                'email' => $validatedData['email'],
+                                'phone' => $validatedData['phone'],
+                                'date_of_birth' => $validatedData['date_of_birth'],
+                                'gender' => $validatedData['gender'],
+                                'address' => $validatedData['address'],
+                                'avatar_url' => $uploadResult['public_url']
+                            ];
+                            
+                            $avatarUpdateResult = $this->supabase->updateCompletePatientWithAvatar($id, $avatarUpdateData);
+                            
+                            if (!$avatarUpdateResult['success']) {
+                                Log::warning('Failed to update patient with avatar URL', [
+                                    'patient_id' => $id,
+                                    'error' => $avatarUpdateResult['error']
+                                ]);
+                            }
+                            
+                        } catch (\Exception $e) {
+                            Log::warning('Exception while updating patient with avatar URL', [
+                                'patient_id' => $id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    } else {
+                        Log::warning('Avatar upload failed during update', [
+                            'patient_id' => $id,
+                            'error' => $uploadResult['error']
+                        ]);
+                        return redirect()->route('admin.patients.index')
+                            ->with('warning', 'Patient updated but avatar upload failed: ' . $uploadResult['error']);
+                    }
+                } else {
+                    Log::warning('Invalid avatar file during update', [
+                        'patient_id' => $id,
+                        'error' => $avatarFile->getErrorMessage()
+                    ]);
+                }
             }
 
+            Log::info('Patient updated successfully', ['patient_id' => $id]);
             return redirect()->route('admin.patients.index')->with('success', 'Patient updated successfully');
+
         } catch (\Exception $e) {
-            return back()->with('error', 'Error updating patient: ' . $e->getMessage());
-        }
+            Log::error('Error in PatientController@update', [
+                'patient_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withInput()->with('error', 'Error updating patient: ' . $e->getMessage());
+        }   
     }
 
     public function destroy($id)
     {
+        Log::info('PatientController@destroy started', ['patient_id' => $id]);
+        
         try {
-            // Delete patient record
-            $this->supabase->deleteById('patients', $id);
-            
-            // Also delete the user profile if exists
-            try {
-                $this->supabase->deleteById('user_profiles', $id);
-            } catch (\Exception $e) {
-                // Ignore if user_profile doesn't exist
+            // Use the database function to delete complete patient and all related data
+            $result = $this->supabase->deleteCompletePatient($id);
+
+            if (!$result['success']) {
+                Log::error('Failed to delete patient using database function', [
+                    'patient_id' => $id,
+                    'error' => $result['error']
+                ]);
+                return back()->with('error', 'Failed to delete patient: ' . $result['error']);
             }
-            
-            return redirect()->route('admin.patients.index')->with('success', 'Patient deleted successfully');
+
+            $deletionData = $result['data'];
+            $patientName = $deletionData['patient_name'] ?? 'Unknown';
+
+            Log::info('Patient deleted successfully using database function', [
+                'patient_id' => $id,
+                'patient_name' => $patientName,
+                'deletion_data' => $deletionData
+            ]);
+
+            return redirect()->route('admin.patients.index')
+                ->with('success', "Patient {$patientName} has been deleted successfully with all related data");
+
         } catch (\Exception $e) {
+            Log::error('Error deleting patient in PatientController@destroy', [
+                'patient_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return back()->with('error', 'Error deleting patient: ' . $e->getMessage());
         }
     }

@@ -18,11 +18,12 @@ class SupabaseService
 
     public function __construct()
     {
-        $this->baseUrl = env('SUPABASE_URL');
-        $this->apiKey = env('SUPABASE_KEY');
-        $this->serviceKey = env('SUPABASE_SERVICE_KEY');
+        // Use config system for consistency
+        $this->baseUrl = config('supabase.url');
         $this->url = config('supabase.url');
+        $this->apiKey = config('supabase.anon_key');
         $this->anonKey = config('supabase.anon_key');
+        $this->serviceKey = config('supabase.service_role_key');
 
         if (!$this->baseUrl || !$this->apiKey) {
             throw new \Exception('Supabase configuration is missing. Please check your .env file.');
@@ -348,16 +349,21 @@ class SupabaseService
             };
 
             $url = "{$this->baseUrl}/rest/v1/{$tableName}?{$primaryKey}=eq.{$id}";
+            
+            // Use service key for sensitive operations like user_profiles
+            $useServiceKey = in_array($tableName, ['user_profiles', 'auth.users']);
+            $authKey = $useServiceKey ? $this->serviceKey : $this->apiKey;
+            
             $headers = [
-                'apikey' => $this->apiKey,
-                'Authorization' => 'Bearer ' . $this->apiKey,
+                'apikey' => $authKey,
+                'Authorization' => 'Bearer ' . $authKey,
                 'Content-Type' => 'application/json',
                 'Prefer' => 'return=representation'
             ];
 
             // Add updated_at timestamp if the table supports it
-            if (in_array($tableName, ['appointments', 'patients', 'dentists', 'treatments', 'user_profiles'])) {
-                $data['updated_at'] = now()->toISOString();
+            if (in_array($tableName, ['appointments', 'patients', 'treatments', 'user_profiles'])) {
+                $data['updated_at'] = now()->toDateTimeString();
             }
 
             Log::info("Making Supabase API request to update record by ID", [
@@ -381,7 +387,10 @@ class SupabaseService
                 Log::error("Supabase API error while updating record by ID", [
                     'table' => $tableName,
                     'status' => $response->status(),
-                    'body' => $response->body()
+                    'body' => $response->body(),
+                    'url' => $url,
+                    'data' => $data,
+                    'headers' => array_keys($headers)
                 ]);
                 throw new \Exception("Failed to update record by ID in table '{$tableName}' in Supabase: " . $response->body());
             }
@@ -394,7 +403,12 @@ class SupabaseService
                 'data' => $responseData
             ]);
 
-            return is_array($responseData) && isset($responseData[0]) ? $responseData[0] : $responseData;
+            // For updates, empty response or array might be valid (depending on Supabase's return preference)
+            if ($response->successful()) {
+                return is_array($responseData) && isset($responseData[0]) ? $responseData[0] : $responseData;
+            } else {
+                throw new \Exception("Update failed with status: " . $response->status());
+            }
         } catch (\Exception $e) {
             Log::error("Error updating record by ID in Supabase", [
                 'table' => $tableName,
@@ -575,9 +589,7 @@ class SupabaseService
                     'p_phone' => $data['phone'],
                     'p_date_of_birth' => $data['date_of_birth'] ?? null,
                     'p_gender' => $data['gender'] ?? null,
-                    'p_address' => $data['address'] ?? null,
-                    'p_email_verified' => isset($data['email_verified']) && $data['email_verified'],
-                    'p_phone_verified' => isset($data['phone_verified']) && $data['phone_verified']
+                    'p_address' => $data['address'] ?? null
                 ]);
 
             if ($response->successful()) {
@@ -618,39 +630,35 @@ class SupabaseService
                     'p_first_name' => $data['first_name'],
                     'p_last_name' => $data['last_name'],
                     'p_email' => $data['email'],
-                    'p_phone' => $data['phone'],
-                    'p_department' => $data['department'] ?? 'General',
-                    'p_working_hours' => $data['working_hours'] ?? null,
-                    'p_email_verified' => isset($data['email_verified']) && $data['email_verified'],
-                    'p_phone_verified' => isset($data['phone_verified']) && $data['phone_verified']
+                    'p_phone' => $data['phone'] ?? null
                 ]);
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                Log::info('Receptionist created successfully', ['response' => $responseData]);
+                Log::info('Receptionist created successfully via function', ['response' => $responseData]);
                 return [
                     'success' => true,
-                    'data' => array_merge($data, ['id' => $responseData['id'] ?? null])
+                    'data' => array_merge($data, ['id' => $responseData])
                 ];
             }
 
-            Log::error('Failed to create complete receptionist in Supabase', [
+            Log::error('Failed to create complete receptionist via function', [
                 'statusCode' => $response->status(),
                 'error' => $response->body()
             ]);
 
             return [
                 'success' => false,
-                'error' => 'Failed to create complete receptionist in Supabase: ' . $response->body()
+                'error' => 'Failed to create complete receptionist: ' . $response->body()
             ];
         } catch (Exception $e) {
-            Log::error('Exception while creating complete receptionist in Supabase', [
+            Log::error('Exception while creating complete receptionist via function', [
                 'exception' => $e->getMessage()
             ]);
 
             return [
                 'success' => false,
-                'error' => 'Exception while creating complete receptionist in Supabase: ' . $e->getMessage()
+                'error' => 'Exception while creating complete receptionist: ' . $e->getMessage()
             ];
         }
     }
@@ -658,16 +666,21 @@ class SupabaseService
     public function createCompleteDentist($data)
     {
         try {
+            // Generate unique UUID for the dentist
+            $dentistId = \Illuminate\Support\Str::uuid();
+            
             $response = $this->supabaseClient(true)
-                ->post("{$this->baseUrl}/rest/v1/rpc/create_complete_dentist", [
+                ->post("{$this->baseUrl}/rest/v1/rpc/store_dentist_with_user", [
                     'p_first_name' => $data['first_name'],
                     'p_last_name' => $data['last_name'],
                     'p_email' => $data['email'],
-                    'p_phone' => $data['phone'],
+                    'p_phone' => $data['phone'] ?? null,
                     'p_specialization' => $data['specialization'] ?? null,
-                    'p_license_number' => $data['license_number'] ?? null,
-                    'p_email_verified' => isset($data['email_verified']) && $data['email_verified'],
-                    'p_phone_verified' => isset($data['phone_verified']) && $data['phone_verified']
+                    'p_bio' => $data['bio'] ?? null,
+                    'p_working_hours' => isset($data['working_hours']) ? $data['working_hours'] : null,
+                    'p_off_days' => $data['off_days'] ?? null,
+                    'p_dentist_id' => $dentistId,
+                    'p_avatar' => $data['avatar'] ?? null
                 ]);
 
             if ($response->successful()) {
@@ -675,7 +688,7 @@ class SupabaseService
                 Log::info('Dentist created successfully', ['response' => $responseData]);
                 return [
                     'success' => true,
-                    'data' => array_merge($data, ['id' => $responseData['id'] ?? null])
+                    'data' => array_merge($data, ['id' => $responseData])
                 ];
             }
 
@@ -696,6 +709,394 @@ class SupabaseService
             return [
                 'success' => false,
                 'error' => 'Exception while creating complete dentist in Supabase: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
+    /**
+     * Create dentist from existing user profile
+     */
+    public function createDentistFromProfile($userProfileId, $data)
+    {
+        try {
+            $response = $this->supabaseClient(true)
+                ->post("{$this->baseUrl}/rest/v1/rpc/create_dentist_from_profile", [
+                    'user_profile_id' => $userProfileId,
+                    'p_specialization' => $data['specialization'] ?? null,
+                    'p_bio' => $data['bio'] ?? null,
+                    'p_working_hours' => isset($data['working_hours']) ? json_encode($data['working_hours']) : null,
+                    'p_off_days' => $data['off_days'] ?? null
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Dentist created from profile successfully', ['response' => $responseData]);
+                return [
+                    'success' => $responseData['success'] ?? true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to create dentist from profile in Supabase', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to create dentist from profile: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while creating dentist from profile', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while creating dentist from profile: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+
+    /**
+     * Get complete dentist information
+     */
+    public function getCompleteDentist($dentistId)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/get_complete_dentist", [
+                    'dentist_uuid' => $dentistId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete dentist data retrieved', ['dentist_id' => $dentistId]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get complete dentist data', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get complete dentist data: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting complete dentist data', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting complete dentist data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * List all dentists with complete information
+     */
+    public function listAllDentists()
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/list_all_dentists", []);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('All dentists data retrieved', ['count' => count($responseData)]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get all dentists data', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get all dentists data: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting all dentists data', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting all dentists data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Delete complete dentist and all related data
+     */
+    public function deleteCompleteDentist($dentistId)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/delete_complete_dentist", [
+                    'dentist_uuid' => $dentistId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete dentist deletion response', ['dentist_id' => $dentistId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to delete complete dentist', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to delete complete dentist: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while deleting complete dentist', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while deleting complete dentist: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Delete complete patient and all related data
+     */
+    public function deleteCompletePatient($patientId)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/delete_complete_patient", [
+                    'patient_uuid' => $patientId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete patient deletion response', ['patient_id' => $patientId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to delete complete patient', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to delete complete patient: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while deleting complete patient', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while deleting complete patient: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get complete patient with user profile data
+     */
+    public function getCompletePatient($patientId)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/get_complete_patient", [
+                    'patient_uuid' => $patientId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete patient data retrieved', ['patient_id' => $patientId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get complete patient', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get complete patient: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting complete patient', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting complete patient: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * List all patients with complete information
+     */
+    public function listAllPatients()
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/list_all_patients", []);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('All patients data retrieved', ['count' => count($responseData)]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get all patients data', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get all patients data: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting all patients data', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting all patients data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Update complete patient data using database function
+     */
+    public function updateCompletePatient($patientId, $data)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/update_complete_patient", [
+                    'patient_uuid' => $patientId,
+                    'p_first_name' => $data['first_name'],
+                    'p_last_name' => $data['last_name'],
+                    'p_email' => $data['email'],
+                    'p_phone' => $data['phone'],
+                    'p_date_of_birth' => $data['date_of_birth'],
+                    'p_gender' => $data['gender'],
+                    'p_address' => $data['address']
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete patient update response', ['patient_id' => $patientId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to update complete patient', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to update complete patient: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while updating complete patient', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while updating complete patient: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Update complete patient data including avatar using database function
+     */
+    public function updateCompletePatientWithAvatar($patientId, $data)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/update_patient_with_avatar", [
+                    'patient_uuid' => $patientId,
+                    'p_first_name' => $data['first_name'],
+                    'p_last_name' => $data['last_name'],
+                    'p_email' => $data['email'],
+                    'p_phone' => $data['phone'],
+                    'p_date_of_birth' => $data['date_of_birth'],
+                    'p_gender' => $data['gender'],
+                    'p_address' => $data['address'],
+                    'p_avatar_url' => $data['avatar_url']
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete patient update with avatar response', ['patient_id' => $patientId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to update complete patient with avatar', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to update complete patient with avatar: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while updating complete patient with avatar', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while updating complete patient with avatar: ' . $e->getMessage()
             ];
         }
     }
@@ -777,21 +1178,6 @@ class SupabaseService
                     'file_path' => "{$bucketName}/{$folderPath}/{$fileName}",
                     'public_url' => $publicUrl
                 ]);
-                
-                // Immediately update the user profile with the avatar URL
-                $updateResult = $this->updateUserAvatarPath($userId, $publicUrl);
-                
-                if (!$updateResult['success']) {
-                    Log::error('Avatar uploaded but failed to update profile', [
-                        'user_id' => $userId,
-                        'error' => $updateResult['error']
-                    ]);
-                    
-                    return [
-                        'success' => false,
-                        'error' => 'The avatar was uploaded but failed to update your profile: ' . $updateResult['error']
-                    ];
-                }
                 
                 return [
                     'success' => true,
@@ -883,6 +1269,169 @@ class SupabaseService
             return [
                 'success' => false,
                 'error' => 'Exception while updating avatar path in user profile: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get complete receptionist with user profile data
+     */
+    public function getCompleteReceptionist($receptionistId)
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/get_complete_receptionist", [
+                    'user_id_param' => $receptionistId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete receptionist data retrieved', ['receptionist_id' => $receptionistId]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get complete receptionist data', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get complete receptionist data: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting complete receptionist data', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting complete receptionist data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * List all receptionists with complete information
+     */
+    public function listAllReceptionists()
+    {
+        try {
+            $response = $this->supabaseClient()
+                ->post("{$this->baseUrl}/rest/v1/rpc/list_all_receptionists", []);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('All receptionists data retrieved', ['count' => count($responseData)]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to get all receptionists data', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to get all receptionists data: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while getting all receptionists data', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while getting all receptionists data: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Update complete receptionist data
+     */
+    public function updateCompleteReceptionist($receptionistId, $data)
+    {
+        try {
+            $response = $this->supabaseClient(true)
+                ->post("{$this->baseUrl}/rest/v1/rpc/update_complete_receptionist", [
+                    'user_id_param' => $receptionistId,
+                    'updates' => $data
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete receptionist update response', ['receptionist_id' => $receptionistId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to update complete receptionist', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to update complete receptionist: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while updating complete receptionist', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while updating complete receptionist: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Delete complete receptionist and all related data
+     */
+    public function deleteCompleteReceptionist($receptionistId)
+    {
+        try {
+            $response = $this->supabaseClient(true)
+                ->post("{$this->baseUrl}/rest/v1/rpc/delete_complete_receptionist", [
+                    'user_id_param' => $receptionistId
+                ]);
+
+            if ($response->successful()) {
+                $responseData = $response->json();
+                Log::info('Complete receptionist deletion response', ['receptionist_id' => $receptionistId, 'response' => $responseData]);
+                return [
+                    'success' => true,
+                    'data' => $responseData
+                ];
+            }
+
+            Log::error('Failed to delete complete receptionist', [
+                'statusCode' => $response->status(),
+                'error' => $response->body()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to delete complete receptionist: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception while deleting complete receptionist', [
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Exception while deleting complete receptionist: ' . $e->getMessage()
             ];
         }
     }
@@ -1059,6 +1608,111 @@ class SupabaseService
         } catch (\Exception $e) {
             Log::error('Supabase get users by role error: ' . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Upload avatar with explicit service role authentication for admin operations
+     */
+    public function uploadAvatarAsAdmin($userId, UploadedFile $file)
+    {
+        // Generate a unique file name for avatar 
+        $fileName = 'avatar_' . Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $bucketName = 'avatars';
+        $folderPath = 'public';
+        
+        try {
+            Log::info('Starting admin avatar upload to Supabase Storage', [
+                'user_id' => $userId,
+                'file_name' => $fileName,
+                'bucket_name' => $bucketName,
+                'using_service_role' => true,
+                'service_key_present' => !empty($this->serviceKey),
+                'service_key_length' => strlen($this->serviceKey ?? ''),
+                'base_url' => $this->baseUrl
+            ]);
+            
+            // Verify we have a valid file
+            if (!$file->isValid()) {
+                return [
+                    'success' => false,
+                    'error' => 'Avatar file is not valid'
+                ];
+            }
+            
+            // Read file content
+            $fileContent = file_get_contents($file->getRealPath());
+            if ($fileContent === false) {
+                return [
+                    'success' => false,
+                    'error' => 'Failed to read avatar file content'
+                ];
+            }
+            
+            $headers = [
+                'apikey' => $this->serviceKey,
+                'Authorization' => 'Bearer ' . $this->serviceKey,
+                'Content-Type' => $file->getMimeType(),
+                'Cache-Control' => 'max-age=3600'
+            ];
+            
+            $uploadUrl = "{$this->baseUrl}/storage/v1/object/{$bucketName}/{$folderPath}/{$fileName}";
+            
+            Log::info('Making storage upload request', [
+                'url' => $uploadUrl,
+                'headers' => array_keys($headers),
+                'content_type' => $file->getMimeType(),
+                'file_size' => strlen($fileContent)
+            ]);
+            
+            // Use service role with explicit authentication
+            $response = Http::withHeaders($headers)
+                ->withBody($fileContent, $file->getMimeType())
+                ->put($uploadUrl);
+            
+            Log::info('Admin avatar upload response', [
+                'user_id' => $userId,
+                'status_code' => $response->status(),
+                'response_body' => $response->body(),
+                'response_headers' => $response->headers()
+            ]);
+            
+            if ($response->successful()) {
+                $publicUrl = "{$this->baseUrl}/storage/v1/object/public/{$bucketName}/{$folderPath}/{$fileName}";
+                
+                Log::info('Avatar upload successful', [
+                    'user_id' => $userId,
+                    'public_url' => $publicUrl
+                ]);
+                
+                return [
+                    'success' => true,
+                    'path' => "{$bucketName}/{$folderPath}/{$fileName}",
+                    'public_url' => $publicUrl
+                ];
+            }
+
+            Log::error('Avatar upload failed', [
+                'user_id' => $userId,
+                'status_code' => $response->status(),
+                'error_body' => $response->body(),
+                'url' => $uploadUrl
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to upload avatar: ' . $response->body()
+            ];
+        } catch (Exception $e) {
+            Log::error('Exception during admin avatar upload', [
+                'user_id' => $userId,
+                'exception' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Avatar upload failed: ' . $e->getMessage()
+            ];
         }
     }
 }

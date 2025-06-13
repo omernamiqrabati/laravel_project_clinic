@@ -63,6 +63,12 @@
                         </a>
                     </li>
                     <li>
+                        <a href="{{ route('admin.receptionists.index') }}" class="nav-link flex items-center gap-4 p-3 rounded-xl text-slate-700 hover:shadow-lg">
+                            <i data-lucide="headphones" class="w-5 h-5"></i> 
+                            <span class="font-medium">Receptionists</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="{{ route('admin.appointments.index') }}" class="nav-link flex items-center gap-4 p-3 rounded-xl text-slate-700 hover:shadow-lg">
                             <i data-lucide="calendar-clock" class="w-5 h-5"></i> 
                             <span class="font-medium">Appointments</span>
@@ -84,12 +90,6 @@
                         <a href="{{ route('admin.payments.index') }}" class="nav-link flex items-center gap-4 p-3 rounded-xl text-slate-700 hover:shadow-lg">
                             <i data-lucide="credit-card" class="w-5 h-5"></i> 
                             <span class="font-medium">Payments</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="{{ route('admin.user_profiles.index') }}" class="nav-link flex items-center gap-4 p-3 rounded-xl text-slate-700 hover:shadow-lg">
-                            <i data-lucide="clipboard-list" class="w-5 h-5"></i> 
-                            <span class="font-medium">User Profiles</span>
                         </a>
                     </li>
                 </ul>

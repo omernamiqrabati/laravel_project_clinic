@@ -153,8 +153,7 @@ class SupabaseAuthService
                     'first_name' => $userData['first_name'],
                     'last_name' => $userData['last_name'],
                     'email' => $email,
-                    'role' => $userData['role'],
-                    'email_verified' => true,
+                    'role' => $userData['role']
                 ]);
 
                 if ($profileResponse->successful()) {

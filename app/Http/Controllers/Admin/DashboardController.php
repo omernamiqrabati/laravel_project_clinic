@@ -25,8 +25,6 @@ class DashboardController extends Controller
             $treatments = $this->supabase->fetchTable('treatments');
             $invoices = $this->supabase->fetchTable('invoices');
             $payments = $this->supabase->fetchTable('payments');
-            $userProfiles = $this->supabase->fetchTable('user_profiles');
-
             // Calculate statistics
             $stats = [
                 'total_patients' => count($patients ?? []),
@@ -35,7 +33,6 @@ class DashboardController extends Controller
                 'total_treatments' => count($treatments ?? []),
                 'total_invoices' => count($invoices ?? []),
                 'total_payments' => count($payments ?? []),
-                'total_user_profiles' => count($userProfiles ?? []),
             ];
 
             // Get recent appointments (last 5)
@@ -69,7 +66,6 @@ class DashboardController extends Controller
                 'total_treatments' => 0,
                 'total_invoices' => 0,
                 'total_payments' => 0,
-                'total_user_profiles' => 0,
             ];
             
             return view('admin.dashboard', [

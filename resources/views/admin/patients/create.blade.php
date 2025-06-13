@@ -98,21 +98,7 @@
                 </div>
             </div>
 
-            {{-- Verifications --}}
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" name="email_verified" id="email_verified" value="1"
-                        class="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                        {{ old('email_verified') ? 'checked' : '' }}>
-                    <label for="email_verified" class="text-sm text-gray-700">Email Verified</label>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <input type="checkbox" name="phone_verified" id="phone_verified" value="1"
-                        class="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                        {{ old('phone_verified') ? 'checked' : '' }}>
-                    <label for="phone_verified" class="text-sm text-gray-700">Phone Verified</label>
-                </div>
-            </div>
+
 
             {{-- Submit Button --}}
             <div class="flex justify-end">

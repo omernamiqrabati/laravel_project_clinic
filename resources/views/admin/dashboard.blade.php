@@ -172,10 +172,6 @@
                         <span class="text-gray-600">Invoices</span>
                         <span class="font-semibold text-gray-900">{{ $stats['total_invoices'] }}</span>
                     </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">User Profiles</span>
-                        <span class="font-semibold text-gray-900">{{ $stats['total_user_profiles'] }}</span>
-                    </div>
                     <hr class="my-4">
                     <div class="bg-blue-50 p-4 rounded-lg">
                         <h4 class="font-semibold text-blue-800 mb-2">📊 Clinic Status</h4>
@@ -192,7 +188,7 @@
     {{-- Quick Navigation --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h3 class="text-lg font-semibold text-gray-800 mb-4">Navigate to</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
             <a href="{{ route('admin.patients.index') ?? '#' }}" 
                class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
                 <i data-lucide="users" class="w-5 h-5 mr-2 text-gray-600"></i>
@@ -227,12 +223,6 @@
                class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
                 <i data-lucide="credit-card" class="w-5 h-5 mr-2 text-gray-600"></i>
                 <span class="text-sm font-medium text-gray-700">Payments</span>
-            </a>
-            
-            <a href="{{ route('admin.user_profiles.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="clipboard-list" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Profiles</span>
             </a>
         </div>
     </div>

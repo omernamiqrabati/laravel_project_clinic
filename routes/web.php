@@ -9,7 +9,7 @@ use App\Http\Controllers\Admin\AppointmentController;
 use App\Http\Controllers\Admin\TreatmentController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\PaymentController;
-use App\Http\Controllers\Admin\UserProfileController;
+
 use App\Http\Controllers\Admin\ReceptionistController;
 
 // Authentication routes
@@ -77,7 +77,7 @@ Route::get('/', function () {
 
 // Admin Dashboard Route
 Route::get('/admin', [DashboardController::class, 'index'])->name('admin.dashboard')->middleware('auth.custom');
-Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard')->middleware('auth.custom');
+Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('admin.dashboard.alt')->middleware('auth.custom');
 
 // Admin resource routes
 Route::prefix('admin')->name('admin.')->middleware('auth.custom')->group(function () {
@@ -114,8 +114,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth.custom')->group(functio
     // Payments Routes
     Route::resource('payments', PaymentController::class);
     
-    // User Profiles Routes
-    Route::resource('user_profiles', UserProfileController::class);
+
 });
 
 // Admin appointment routes grouped like patients
