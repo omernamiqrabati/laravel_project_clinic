@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\TreatmentController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\PaymentController;
 
+
 use App\Http\Controllers\Admin\ReceptionistController;
 
 // Authentication routes
@@ -115,6 +116,7 @@ Route::prefix('admin')->name('admin.')->middleware('auth.custom')->group(functio
     Route::resource('payments', PaymentController::class);
     
 
+    
 });
 
 // Admin appointment routes grouped like patients

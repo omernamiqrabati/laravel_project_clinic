@@ -59,16 +59,16 @@
             </div>
         </div>
 
-        {{-- Revenue Card --}}
+        {{-- Payments Card --}}
         <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-purple-100 text-sm font-medium">Total Revenue</p>
-                    <p class="text-3xl font-bold">${{ number_format($totalRevenue, 2) }}</p>
-                    <p class="text-purple-100 text-xs mt-1">{{ $stats['total_payments'] }} payments</p>
+                    <p class="text-purple-100 text-sm font-medium">{{ $stats['current_month'] }} Payments</p>
+                    <p class="text-3xl font-bold">${{ number_format($stats['total_payment_amount'], 2) }}</p>
+                    <p class="text-purple-100 text-xs mt-1">{{ $stats['current_month_payments'] }} payments this month</p>
                 </div>
                 <div class="p-3 bg-purple-400 bg-opacity-30 rounded-full">
-                    <i data-lucide="dollar-sign" class="w-8 h-8"></i>
+                    <i data-lucide="credit-card" class="w-8 h-8"></i>
                 </div>
             </div>
         </div>
@@ -185,45 +185,349 @@
         </div>
     </div>
 
-    {{-- Quick Navigation --}}
+    {{-- Navigate to - Table View --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Navigate to</h3>
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-            <a href="{{ route('admin.patients.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="users" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Patients</span>
-            </a>
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">📋 Admin Tables Overview</h3>
+        
+        {{-- Desktop Table View --}}
+        <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full text-sm text-left">
+                <thead class="bg-blue-50 text-blue-800 text-sm font-semibold">
+                    <tr>
+                        <th class="px-4 py-3 border-b border-blue-200">Module</th>
+                        <th class="px-4 py-3 border-b border-blue-200">Total Records</th>
+                        <th class="px-4 py-3 border-b border-blue-200">Status</th>
+                        <th class="px-4 py-3 border-b border-blue-200 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr class="hover:bg-blue-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                                    <i data-lucide="users" class="w-5 h-5 text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Patients</p>
+                                    <p class="text-xs text-gray-500">Patient management</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-blue-600">{{ $stats['total_patients'] }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_patients'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $stats['total_patients'] > 0 ? 'Active' : 'Empty' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.patients.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.patients.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Add</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-green-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-green-100 rounded-lg mr-3">
+                                    <i data-lucide="user-check" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Dentists</p>
+                                    <p class="text-xs text-gray-500">Staff management</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-green-600">{{ $stats['total_dentists'] }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_dentists'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $stats['total_dentists'] > 0 ? 'Active' : 'Empty' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.dentists.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.dentists.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Add</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-teal-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-teal-100 rounded-lg mr-3">
+                                    <i data-lucide="user-cog" class="w-5 h-5 text-teal-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Receptionists</p>
+                                    <p class="text-xs text-gray-500">Front desk staff</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-teal-600">{{ $stats['total_receptionists'] ?? 'N/A' }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            @if(isset($stats['total_receptionists']))
+                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_receptionists'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                    {{ $stats['total_receptionists'] > 0 ? 'Active' : 'Empty' }}
+                                </span>
+                            @else
+                                <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                                    Not Available
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.receptionists.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.receptionists.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Add</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-yellow-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-yellow-100 rounded-lg mr-3">
+                                    <i data-lucide="calendar-clock" class="w-5 h-5 text-yellow-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Appointments</p>
+                                    <p class="text-xs text-gray-500">Scheduling system</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-yellow-600">{{ $stats['total_appointments'] }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $pendingAppointments > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
+                                {{ $pendingAppointments > 0 ? $pendingAppointments . ' Pending' : 'Up to date' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.appointments.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.appointments.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Book</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-indigo-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-indigo-100 rounded-lg mr-3">
+                                    <i data-lucide="activity" class="w-5 h-5 text-indigo-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Treatments</p>
+                                    <p class="text-xs text-gray-500">Medical procedures</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-indigo-600">{{ $stats['total_treatments'] }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_treatments'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $stats['total_treatments'] > 0 ? 'Active' : 'Empty' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.treatments.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.treatments.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Add</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-orange-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-orange-100 rounded-lg mr-3">
+                                    <i data-lucide="file-text" class="w-5 h-5 text-orange-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Invoices</p>
+                                    <p class="text-xs text-gray-500">Billing system</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="text-2xl font-bold text-orange-600">{{ $stats['total_invoices'] }}</span>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_invoices'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $stats['total_invoices'] > 0 ? 'Active' : 'Empty' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.invoices.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.invoices.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Create</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-purple-50 transition-colors">
+                        <td class="px-4 py-4">
+                            <div class="flex items-center">
+                                <div class="p-2 bg-purple-100 rounded-lg mr-3">
+                                    <i data-lucide="credit-card" class="w-5 h-5 text-purple-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">Payments</p>
+                                    <p class="text-xs text-gray-500">Financial records</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <div>
+                                <span class="text-2xl font-bold text-purple-600">{{ $stats['total_payments'] }}</span>
+                                <p class="text-xs text-gray-500">${{ number_format($stats['total_payment_amount'], 2) }} total</p>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['current_month_payments'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                                {{ $stats['current_month_payments'] > 0 ? $stats['current_month_payments'] . ' This Month' : 'No Recent' }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center">
+                            <div class="flex justify-center space-x-2">
+                                <a href="{{ route('admin.payments.index') ?? '#' }}" 
+                                   class="text-blue-600 hover:text-blue-800 font-medium text-sm">View</a>
+                                <a href="{{ route('admin.payments.create') ?? '#' }}" 
+                                   class="text-green-600 hover:text-green-800 font-medium text-sm">Record</a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Mobile Card View --}}
+        <div class="md:hidden space-y-3">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <i data-lucide="users" class="w-5 h-5 text-blue-600 mr-2"></i>
+                        <span class="font-medium text-gray-900">Patients</span>
+                    </div>
+                    <span class="text-lg font-bold text-blue-600">{{ $stats['total_patients'] }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_patients'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                        {{ $stats['total_patients'] > 0 ? 'Active' : 'Empty' }}
+                    </span>
+                    <div class="space-x-2">
+                        <a href="{{ route('admin.patients.index') ?? '#' }}" class="text-blue-600 text-sm font-medium">View</a>
+                        <a href="{{ route('admin.patients.create') ?? '#' }}" class="text-green-600 text-sm font-medium">Add</a>
+                    </div>
+                </div>
+            </div>
             
-            <a href="{{ route('admin.dentists.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="user-check" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Dentists</span>
-            </a>
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <i data-lucide="user-check" class="w-5 h-5 text-green-600 mr-2"></i>
+                        <span class="font-medium text-gray-900">Dentists</span>
+                    </div>
+                    <span class="text-lg font-bold text-green-600">{{ $stats['total_dentists'] }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_dentists'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                        {{ $stats['total_dentists'] > 0 ? 'Active' : 'Empty' }}
+                    </span>
+                    <div class="space-x-2">
+                        <a href="{{ route('admin.dentists.index') ?? '#' }}" class="text-blue-600 text-sm font-medium">View</a>
+                        <a href="{{ route('admin.dentists.create') ?? '#' }}" class="text-green-600 text-sm font-medium">Add</a>
+                    </div>
+                </div>
+            </div>
             
-            <a href="{{ route('admin.appointments.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="calendar-clock" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Appointments</span>
-            </a>
+            <div class="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <i data-lucide="user-cog" class="w-5 h-5 text-teal-600 mr-2"></i>
+                        <span class="font-medium text-gray-900">Receptionists</span>
+                    </div>
+                    <span class="text-lg font-bold text-teal-600">{{ $stats['total_receptionists'] ?? 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    @if(isset($stats['total_receptionists']))
+                        <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['total_receptionists'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                            {{ $stats['total_receptionists'] > 0 ? 'Active' : 'Empty' }}
+                        </span>
+                    @else
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                            Not Available
+                        </span>
+                    @endif
+                    <div class="space-x-2">
+                        <a href="{{ route('admin.receptionists.index') ?? '#' }}" class="text-blue-600 text-sm font-medium">View</a>
+                        <a href="{{ route('admin.receptionists.create') ?? '#' }}" class="text-green-600 text-sm font-medium">Add</a>
+                    </div>
+                </div>
+            </div>
             
-            <a href="{{ route('admin.treatments.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="activity" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Treatments</span>
-            </a>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <i data-lucide="calendar-clock" class="w-5 h-5 text-yellow-600 mr-2"></i>
+                        <span class="font-medium text-gray-900">Appointments</span>
+                    </div>
+                    <span class="text-lg font-bold text-yellow-600">{{ $stats['total_appointments'] }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $pendingAppointments > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
+                        {{ $pendingAppointments > 0 ? $pendingAppointments . ' Pending' : 'Up to date' }}
+                    </span>
+                    <div class="space-x-2">
+                        <a href="{{ route('admin.appointments.index') ?? '#' }}" class="text-blue-600 text-sm font-medium">View</a>
+                        <a href="{{ route('admin.appointments.create') ?? '#' }}" class="text-green-600 text-sm font-medium">Book</a>
+                    </div>
+                </div>
+            </div>
             
-            <a href="{{ route('admin.invoices.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="file-text" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Invoices</span>
-            </a>
-            
-            <a href="{{ route('admin.payments.index') ?? '#' }}" 
-               class="flex items-center justify-center p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-                <i data-lucide="credit-card" class="w-5 h-5 mr-2 text-gray-600"></i>
-                <span class="text-sm font-medium text-gray-700">Payments</span>
-            </a>
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                        <i data-lucide="credit-card" class="w-5 h-5 text-purple-600 mr-2"></i>
+                        <span class="font-medium text-gray-900">Payments</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-lg font-bold text-purple-600">{{ $stats['total_payments'] }}</span>
+                        <p class="text-xs text-gray-500">${{ number_format($stats['total_payment_amount'], 2) }}</p>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $stats['current_month_payments'] > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                        {{ $stats['current_month_payments'] > 0 ? $stats['current_month_payments'] . ' This Month' : 'No Recent' }}
+                    </span>
+                    <div class="space-x-2">
+                        <a href="{{ route('admin.payments.index') ?? '#' }}" class="text-blue-600 text-sm font-medium">View</a>
+                        <a href="{{ route('admin.payments.create') ?? '#' }}" class="text-green-600 text-sm font-medium">Record</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
